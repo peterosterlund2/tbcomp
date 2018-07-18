@@ -7,6 +7,7 @@
 
 class BitBufferWriter {
 public:
+    /** Constructor. */
     BitBufferWriter();
 
     /** Store "nBits" bits in the buffer, defined by the least
@@ -17,6 +18,7 @@ public:
     /** Store a value of unspecified size. Small values use fewer bits than large values. */
     void writeU64(U64 val);
 
+    /** Return total number of written bits. */
     U64 getNumBits() const { return buf.size() * 64 + bitOffs; }
 
     /** Return the underlying data buffer. Must not be called more than once. */
@@ -31,6 +33,7 @@ private:
 
 class BitBufferReader {
 public:
+    /** Constructor. */
     BitBufferReader(const U8* buf);
 
     /** Return the next "nBits" bits.
