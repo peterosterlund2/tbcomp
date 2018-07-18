@@ -2,22 +2,20 @@
 #define HUFFMAN_HPP_
 
 #include "bitbuffer.hpp"
-#include <vector>
 
 
 class HuffCode {
 public:
-    HuffCode();
-
     /** Serialize to bit buffer. */
     void toBitBuf(BitBufferWriter& buf) const;
 
     /** Deserialize from bit buffer. */
     void fromBitBuf(BitBufferReader& reader);
 
-
+    /** Decode one symbol. */
     int decodeSymbol(BitBufferReader& reader) const;
 
+    /** Encode one symbol. */
     void encodeSymbol(int data, BitBufferWriter& buf) const;
 
 private:
@@ -27,18 +25,13 @@ private:
 
 class Huffman {
 public:
-    Huffman();
-
     void computePrefixCode(const std::vector<U64>& freqTable, HuffCode& code);
 
     void encode(const std::vector<int>& data, const HuffCode& code,
                 BitBufferWriter& out);
 
-    void decode(const BitBufferReader& in, const HuffCode& code,
+    void decode(BitBufferReader& in, U64 nSymbols, const HuffCode& code,
                 std::vector<int>& data);
-
-private:
-
 };
 
 
