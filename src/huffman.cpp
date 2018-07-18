@@ -1,13 +1,41 @@
 #include "huffman.hpp"
 #include <queue>
 #include <functional>
+#include <algorithm>
 #include <cassert>
 
 #include <iostream>
 
 
+void HuffCode::toBitBuf(BitBufferWriter& buf, bool includeNumSyms) const {
+    if (includeNumSyms)
+        buf.writeU64(symLen.size());
+
+    int maxVal = *std::max_element(symLen.begin(), symLen.end());
+    int symBits = 0;
+    while (maxVal > 0) {
+        maxVal /= 2;
+        symBits++;
+    }
+    buf.writeU64(symBits);
+    for (int s : symLen)
+        buf.writeBits(s, symBits);
+}
+
+void HuffCode::fromBitBuf(BitBufferReader& buf) {
+    int numSyms = buf.readU64();
+    fromBitBuf(buf, numSyms);
+}
+
+void HuffCode::fromBitBuf(BitBufferReader& buf, int numSyms) {
+    int symBits = buf.readU64();
+    symLen.resize(numSyms);
+    for (int i = 0; i < numSyms; i++)
+        symLen[i] = buf.readBits(symBits);
+}
+
 int
-HuffCode::decodeSymbol(BitBufferReader& reader) const {
+HuffCode::decodeSymbol(BitBufferReader& buf) const {
     return 0;
 }
 

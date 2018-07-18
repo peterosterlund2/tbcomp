@@ -7,19 +7,21 @@
 class HuffCode {
 public:
     /** Serialize to bit buffer. */
-    void toBitBuf(BitBufferWriter& buf) const;
+    void toBitBuf(BitBufferWriter& buf, bool includeNumSyms) const;
 
-    /** Deserialize from bit buffer. */
-    void fromBitBuf(BitBufferReader& reader);
+    /** Deserialize from bit buffer. Get number of symbols from bit buffer. */
+    void fromBitBuf(BitBufferReader& buf);
+    /** Deserialize from bit buffer. Assume number of symbols is "numSyms". */
+    void fromBitBuf(BitBufferReader& buf, int numSyms);
 
     /** Decode one symbol. */
-    int decodeSymbol(BitBufferReader& reader) const;
+    int decodeSymbol(BitBufferReader& buf) const;
 
     /** Encode one symbol. */
     void encodeSymbol(int data, BitBufferWriter& buf) const;
 
 private:
-
+    std::vector<int> symLen;
 };
 
 

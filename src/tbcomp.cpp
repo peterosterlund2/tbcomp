@@ -10,11 +10,25 @@
 #include <iomanip>
 #include <sstream>
 
-inline std::string
+std::string
 num2Hex(U64 num) {
     std::stringstream ss;
     ss << std::hex << std::setw(16) << std::setfill('0') << num;
     return ss.str();
+}
+
+void printBits(BitBufferReader&& buf, U64 len) {
+    for (U64 i = 0; i < len; i++) {
+        if (i > 0) {
+            if (i % 64 == 0)
+                std::cout << '\n';
+            else if (i % 8 == 0)
+                std::cout << ' ';
+        }
+        bool val = buf.readBit();
+        std::cout << (val ? '1' : '0');
+    }
+    std::cout << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -24,11 +38,11 @@ int main(int argc, char* argv[]) {
 
         for (int i = 0; i < 64; i++) {
             U64 val = (1ULL << i) - 1;
-            bw.putBits(val, i);
-            bw.putBits(i % 2, 1);
+            bw.writeBits(val, i);
+            bw.writeBits(i % 2, 1);
         }
 
-        std::vector<U64> buf = bw.getBuf();
+        const std::vector<U64>& buf = bw.getBuf();
 
         BitBufferReader br((const U8*)&buf[0]);
         for (int i = 0; i < 64; i++) {
@@ -38,6 +52,7 @@ int main(int argc, char* argv[]) {
         }
     }
 #endif
+#if 0
     {
         Huffman huff;
         HuffCode code;
@@ -47,5 +62,21 @@ int main(int argc, char* argv[]) {
             freq.push_back(std::atol(argv[i]));
 
         huff.computePrefixCode(freq, code);
+    }
+#endif
+    {
+        BitBufferWriter bw;
+        for (int i = 0; i < 10; i++) {
+            bw.writeU64(i);
+        }
+        std::cout << "numBits:" << bw.getNumBits() << std::endl;
+        const std::vector<U64>& buf = bw.getBuf();
+        printBits(BitBufferReader((const U8*)&buf[0]), buf.size() * 64);
+
+        BitBufferReader br((const U8*)&buf[0]);
+        for (int i = 0; i < 10; i++) {
+            U64 val = br.readU64();
+            std::cout << "val:" << val << std::endl;
+        }
     }
 }

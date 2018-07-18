@@ -12,7 +12,12 @@ public:
     /** Store "nBits" bits in the buffer, defined by the least
      *  significant bits in "val". The other bits in "val" must be 0.
      *  @pre nBits < 64 */
-    void putBits(U64 val, int nBits);
+    void writeBits(U64 val, int nBits);
+
+    /** Store a value of unspecified size. Small values use fewer bits than large values. */
+    void writeU64(U64 val);
+
+    U64 getNumBits() const { return buf.size() * 64 + bitOffs; }
 
     /** Return the underlying data buffer. Must not be called more than once. */
     const std::vector<U64>& getBuf();
@@ -32,6 +37,9 @@ public:
      *  @pre nBits < 64 */
     U64 readBits(int nBits);
 
+    /** Return value stored by BitBufferWriter::writeU64(). */
+    U64 readU64();
+
     /** Return the next bit. */
     bool readBit();
 
@@ -50,7 +58,7 @@ inline BitBufferWriter::BitBufferWriter()
 }
 
 inline void
-BitBufferWriter::putBits(U64 val, int nBits) {
+BitBufferWriter::writeBits(U64 val, int nBits) {
     data |= val << bitOffs;
     bitOffs += nBits;
     if (bitOffs >= 64) {
