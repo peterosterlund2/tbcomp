@@ -110,14 +110,16 @@ BitBufferReader::readBit() {
 
 inline void
 BitBufferReader::readData() {
-    U64 val = (*buf++);
-    val |= (U64)(*buf++) << (8*1);
-    val |= (U64)(*buf++) << (8*2);
-    val |= (U64)(*buf++) << (8*3);
-    val |= (U64)(*buf++) << (8*4);
-    val |= (U64)(*buf++) << (8*5);
-    val |= (U64)(*buf++) << (8*6);
-    val |= (U64)(*buf++) << (8*7);
+    const U8* ptr = buf;
+    U64 val = (*ptr++);
+    val |= (U64)(*ptr++) << (8*1);
+    val |= (U64)(*ptr++) << (8*2);
+    val |= (U64)(*ptr++) << (8*3);
+    val |= (U64)(*ptr++) << (8*4);
+    val |= (U64)(*ptr++) << (8*5);
+    val |= (U64)(*ptr++) << (8*6);
+    val |= (U64)(*ptr++) << (8*7);
+    buf = ptr;
     data = val;
     nDataBits += 64;
 }
