@@ -4,8 +4,12 @@
 #include "bitbuffer.hpp"
 
 
+/** Symbol encoding/decoding using Huffman prefix codes. */
 class HuffCode {
 public:
+    /** Compute canoncial Huffman code from symbol lengths. */
+    void setSymbolLengths(const std::vector<int>& bitLenVec);
+
     /** Serialize to bit buffer. */
     void toBitBuf(BitBufferWriter& buf, bool includeNumSyms) const;
 
@@ -21,10 +25,22 @@ public:
     void encodeSymbol(int data, BitBufferWriter& buf) const;
 
 private:
-    std::vector<int> symLen;
+    /** Compute canonical Huffman tree from symbol lengths. */
+    void computeTree();
+
+    std::vector<int> symLen;  // Symbol lengths
+    std::vector<U64> symBits; // Symbol bit patterns
+
+    struct Node {
+        int left;   // Left child, or -symVal if left child is a leaf node
+        int right;  // Right child, or -symVal if right child is a leaf node
+    };
+    std::vector<Node> nodes;
 };
 
 
+/** Utility for creating a Huffman code and for encoding/decoding
+ *  an array of symbols. */
 class Huffman {
 public:
     void computePrefixCode(const std::vector<U64>& freqTable, HuffCode& code);

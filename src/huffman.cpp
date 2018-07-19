@@ -5,7 +5,17 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <utility>
+#include <sstream>
+#include <iomanip>
 
+
+void HuffCode::setSymbolLengths(const std::vector<int>& bitLenVec) {
+    symLen = bitLenVec;
+    for (int s : symLen)
+        assert(s < 64);
+    computeTree();
+}
 
 void HuffCode::toBitBuf(BitBufferWriter& buf, bool includeNumSyms) const {
     if (includeNumSyms)
@@ -32,6 +42,42 @@ void HuffCode::fromBitBuf(BitBufferReader& buf, int numSyms) {
     symLen.resize(numSyms);
     for (int i = 0; i < numSyms; i++)
         symLen[i] = buf.readBits(symBits);
+    computeTree();
+}
+
+static std::string
+printBits(U64 val, int nBits) {
+    std::stringstream ss;
+    for (int i = nBits -1; i >= 0; i--) {
+        bool b = ((1ULL << i) & val) != 0;
+        ss << (b ? '1' : '0');
+    }
+    return ss.str();
+}
+
+void HuffCode::computeTree() {
+    const int nSym = symLen.size();
+    std::vector<std::pair<int,int>> syms;
+    for (int i = 0; i < nSym; i++)
+        syms.push_back(std::make_pair(symLen[i], i));
+    std::sort(syms.begin(), syms.end());
+    symBits.resize(nSym);
+    U64 bits = 0;
+    for (int i = 0; i < nSym; i++) {
+        symBits[syms[i].second] = bits;
+        if (i < nSym - 1)
+            bits = (bits + 1) << (syms[i+1].first - syms[i].first);
+    }
+
+    for (int i = 0; i < nSym; i++) {
+        int len = syms[i].first;
+        int sym = syms[i].second;
+        if (len > 0) {
+            std::cout << "len:" << std::setw(2) << len
+                      << " sym:" << std::setw(3) << sym
+                      << " bits: " << printBits(symBits[sym], len) << std::endl;
+        }
+    }
 }
 
 int
@@ -41,6 +87,7 @@ HuffCode::decodeSymbol(BitBufferReader& buf) const {
 
 void
 HuffCode::encodeSymbol(int data, BitBufferWriter& buf) const {
+    buf.writeBits(symBits[data], symLen[data]);
 }
 
 
@@ -138,6 +185,8 @@ void Huffman::computePrefixCode(const std::vector<U64>& freqTable, HuffCode& cod
               << " entr: " << entr << ' ' << (entr / totFreq)
               << " compr: " << compr << ' ' << (compr / (double)totFreq)
               << std::endl;
+
+    code.setSymbolLengths(lenVec);
 }
 
 void Huffman::encode(const std::vector<int>& data, const HuffCode& code,

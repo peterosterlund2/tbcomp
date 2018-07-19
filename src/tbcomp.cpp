@@ -83,6 +83,7 @@ int main(int argc, char* argv[]) {
         }
     }
 #endif
+#if 1
     {
         std::vector<U64> freq(256);
         while (true) {
@@ -95,4 +96,21 @@ int main(int argc, char* argv[]) {
         HuffCode code;
         huff.computePrefixCode(freq, code);
     }
+#endif
+#if 0
+    {
+        std::vector<U64> freq;
+        U64 a = 1;
+        U64 b = 1;
+        for (int i = 0; i < 64; i++) {
+            freq.push_back(a);
+            U64 c = a + b;
+            a = b;
+            b = c;
+        }
+        Huffman huff;
+        HuffCode code;
+        huff.computePrefixCode(freq, code);
+    }
+#endif
 }
