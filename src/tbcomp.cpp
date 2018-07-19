@@ -78,7 +78,8 @@ int main(int argc, char* argv[]) {
 #if 0
     {
         BitBufferWriter bw;
-        for (int i = 0; i < 10; i++) {
+        int N = 20;
+        for (int i = 0; i < N; i++) {
             bw.writeU64(i);
         }
         std::cout << "numBits:" << bw.getNumBits() << std::endl;
@@ -86,7 +87,7 @@ int main(int argc, char* argv[]) {
         printBits(BitBufferReader((const U8*)&buf[0]), buf.size() * 64);
 
         BitBufferReader br((const U8*)&buf[0]);
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < N; i++) {
             U64 val = br.readU64();
             std::cout << "val:" << val << std::endl;
         }

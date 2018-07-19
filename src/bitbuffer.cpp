@@ -7,11 +7,11 @@ void BitBufferWriter::writeU64(U64 val) {
         tmp /= 2;
         nBits++;
     }
-    writeBits(0, nBits);
-    writeBits(1, 1);
-    if (nBits > 1) {
-        val &= (1ULL << (nBits - 1)) - 1;
-        writeBits(val, nBits-1);
+    if (nBits > 0) {
+        writeBits(0, nBits);
+        writeBits(val, nBits);
+    } else {
+        writeBits(1, 1);
     }
 }
 
