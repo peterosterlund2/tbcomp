@@ -3,7 +3,7 @@
 #include <functional>
 #include <algorithm>
 #include <cassert>
-
+#include <cmath>
 #include <iostream>
 
 
@@ -108,7 +108,36 @@ void Huffman::computePrefixCode(const std::vector<U64>& freqTable, HuffCode& cod
     };
     computeLengths(tree.top().id, 0);
 
+    std::cout << "freq: " << freqTable << std::endl;
+    std::vector<U64> freqSorted(freqTable);
+    std::sort(freqSorted.begin(), freqSorted.end(), std::greater<U64>());
+    std::cout << "freqS: " << freqSorted << std::endl;
+
     std::cout << "lenVec: " << lenVec << std::endl;
+    std::vector<int> sorted(lenVec);
+    std::sort(sorted.begin(), sorted.end());
+    std::cout << "lenVecS: " << sorted << std::endl;
+
+    U64 totFreq = 0;
+    double entr = 0.0;
+    for (U64 f : freqTable) {
+        if (f == 0)
+            continue;
+        entr += -(f * std::log2((double)f));
+        totFreq += f;
+    }
+    entr += totFreq * std::log2((double)totFreq);
+    entr /= 8;
+
+    U64 compr = 0;
+    for (int i = 0; i < nSym; i++)
+        compr += freqTable[i] * lenVec[i];
+    compr /= 8;
+
+    std::cout << "size: " << totFreq
+              << " entr: " << entr << ' ' << (entr / totFreq)
+              << " compr: " << compr << ' ' << (compr / (double)totFreq)
+              << std::endl;
 }
 
 void Huffman::encode(const std::vector<int>& data, const HuffCode& code,

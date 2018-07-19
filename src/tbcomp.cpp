@@ -9,6 +9,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <stdio.h>
 
 std::string
 num2Hex(U64 num) {
@@ -17,7 +18,8 @@ num2Hex(U64 num) {
     return ss.str();
 }
 
-void printBits(BitBufferReader&& buf, U64 len) {
+void
+printBits(BitBufferReader&& buf, U64 len) {
     for (U64 i = 0; i < len; i++) {
         if (i > 0) {
             if (i % 64 == 0)
@@ -64,6 +66,7 @@ int main(int argc, char* argv[]) {
         huff.computePrefixCode(freq, code);
     }
 #endif
+#if 0
     {
         BitBufferWriter bw;
         for (int i = 0; i < 10; i++) {
@@ -78,5 +81,18 @@ int main(int argc, char* argv[]) {
             U64 val = br.readU64();
             std::cout << "val:" << val << std::endl;
         }
+    }
+#endif
+    {
+        std::vector<U64> freq(256);
+        while (true) {
+            int c = getchar();
+            if (c == EOF)
+                break;
+            freq[c]++;
+        }
+        Huffman huff;
+        HuffCode code;
+        huff.computePrefixCode(freq, code);
     }
 }
