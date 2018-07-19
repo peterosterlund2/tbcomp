@@ -7,7 +7,7 @@
 /** Symbol encoding/decoding using Huffman prefix codes. */
 class HuffCode {
 public:
-    /** Compute canoncial Huffman code from symbol lengths. */
+    /** Compute canonical Huffman code from symbol lengths. */
     void setSymbolLengths(const std::vector<int>& bitLenVec);
 
     /** Serialize to bit buffer. */
