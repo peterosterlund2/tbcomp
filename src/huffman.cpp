@@ -1,13 +1,11 @@
 #include "huffman.hpp"
+#include "util.hpp"
 #include <queue>
 #include <functional>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <iostream>
 #include <utility>
-#include <sstream>
-#include <iomanip>
 
 
 void HuffCode::setSymbolLengths(const std::vector<int>& bitLenVec) {
@@ -45,26 +43,41 @@ void HuffCode::fromBitBuf(BitBufferReader& buf, int numSyms) {
     computeTree();
 }
 
-static std::string
-printBits(U64 val, int nBits) {
-    std::stringstream ss;
-    for (int i = nBits -1; i >= 0; i--) {
-        bool b = ((1ULL << i) & val) != 0;
-        ss << (b ? '1' : '0');
-    }
-    return ss.str();
-}
-
 void HuffCode::computeTree() {
     const int nSym = symLen.size();
-    std::vector<std::pair<int,int>> syms;
+    std::vector<std::pair<int,int>> syms; // length, symbol number
     for (int i = 0; i < nSym; i++)
         syms.push_back(std::make_pair(symLen[i], i));
     std::sort(syms.begin(), syms.end());
+
     symBits.resize(nSym);
+    nodes.clear();
     U64 bits = 0;
     for (int i = 0; i < nSym; i++) {
-        symBits[syms[i].second] = bits;
+        if (syms[i].first == 0)
+            continue;
+        const int symNo = syms[i].second;
+        symBits[symNo] = bits;
+
+        if (nodes.empty())
+            nodes.push_back(Node{0, 0});
+        int len = syms[i].first;
+        int n = 0;
+        while (len-- > 0) {
+            bool b = ((1ULL << len) & bits) != 0;
+            int& child = b ? nodes[n].right : nodes[n].left;
+            if (len == 0) {
+                child = -symNo;
+            } else {
+                if (child) {
+                    n = child;
+                } else {
+                    n = child = nodes.size();
+                    nodes.push_back(Node{0, 0});
+                }
+            }
+        }
+
         if (i < nSym - 1)
             bits = (bits + 1) << (syms[i+1].first - syms[i].first);
     }
@@ -75,14 +88,27 @@ void HuffCode::computeTree() {
         if (len > 0) {
             std::cout << "len:" << std::setw(2) << len
                       << " sym:" << std::setw(3) << sym
-                      << " bits: " << printBits(symBits[sym], len) << std::endl;
+                      << " bits: " << toBits(symBits[sym], len) << std::endl;
         }
+    }
+
+    for (int n = 0; n < (int)nodes.size(); n++) {
+        std::cout << "n:" << n << " l:" << nodes[n].left << " r:" << nodes[n].right << std::endl;
     }
 }
 
 int
 HuffCode::decodeSymbol(BitBufferReader& buf) const {
-    return 0;
+    if (symBits.size() < 2)
+        return 0;
+
+    int n = 0;
+    while (true) {
+        bool b = buf.readBit();
+        n = b ? nodes[n].right : nodes[n].left;
+        if (n <= 0)
+            return -n;
+    }
 }
 
 void
@@ -90,22 +116,6 @@ HuffCode::encodeSymbol(int data, BitBufferWriter& buf) const {
     buf.writeBits(symBits[data], symLen[data]);
 }
 
-
-#if 1
-template <typename T>
-std::ostream& operator<<(std::ostream& os, const std::vector<T>& v) {
-    os << "[";
-    bool first = true;
-    for (const T& e : v) {
-        if (!first)
-            os << ", ";
-        os << e;
-        first = false;
-    }
-    os << " ]";
-    return os;
-}
-#endif
 
 void Huffman::computePrefixCode(const std::vector<U64>& freqTable, HuffCode& code) {
     const int nSym = freqTable.size();
@@ -179,7 +189,7 @@ void Huffman::computePrefixCode(const std::vector<U64>& freqTable, HuffCode& cod
     U64 compr = 0;
     for (int i = 0; i < nSym; i++)
         compr += freqTable[i] * lenVec[i];
-    compr /= 8;
+    compr = (compr + 7) / 8;
 
     std::cout << "size: " << totFreq
               << " entr: " << entr << ' ' << (entr / totFreq)

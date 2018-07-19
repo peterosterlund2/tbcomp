@@ -5,33 +5,9 @@
  *      Author: petero
  */
 
+#include "util.hpp"
 #include "huffman.hpp"
-#include <iostream>
-#include <iomanip>
-#include <sstream>
-#include <stdio.h>
 
-std::string
-num2Hex(U64 num) {
-    std::stringstream ss;
-    ss << std::hex << std::setw(16) << std::setfill('0') << num;
-    return ss.str();
-}
-
-void
-printBits(BitBufferReader&& buf, U64 len) {
-    for (U64 i = 0; i < len; i++) {
-        if (i > 0) {
-            if (i % 64 == 0)
-                std::cout << '\n';
-            else if (i % 8 == 0)
-                std::cout << ' ';
-        }
-        bool val = buf.readBit();
-        std::cout << (val ? '1' : '0');
-    }
-    std::cout << std::endl;
-}
 
 int main(int argc, char* argv[]) {
 #if 0
@@ -66,6 +42,39 @@ int main(int argc, char* argv[]) {
         huff.computePrefixCode(freq, code);
     }
 #endif
+#if 1
+    {
+        std::vector<U64> freq;
+        std::vector<int> data;
+        bool sepFound = false;
+        for (int i = 1; i < argc; i++) {
+            if (argv[i] == std::string(":")) {
+                sepFound = true;
+                continue;
+            }
+            if (sepFound) {
+                data.push_back(std::atol(argv[i]));
+            } else {
+                freq.push_back(std::atol(argv[i]));
+            }
+        }
+
+        Huffman huff;
+        HuffCode code;
+        huff.computePrefixCode(freq, code);
+        BitBufferWriter bw;
+        huff.encode(data, code, bw);
+
+        std::cout << "numBits:" << bw.getNumBits() << std::endl;
+        const std::vector<U64>& buf = bw.getBuf();
+        printBits(BitBufferReader((const U8*)&buf[0]), buf.size() * 64);
+
+        BitBufferReader br((const U8*)&buf[0]);
+        std::vector<int> data2;
+        huff.decode(br, data.size(), code, data2);
+        std::cout << "data2: " << data2 << std::endl;
+    }
+#endif
 #if 0
     {
         BitBufferWriter bw;
@@ -83,7 +92,7 @@ int main(int argc, char* argv[]) {
         }
     }
 #endif
-#if 1
+#if 0
     {
         std::vector<U64> freq(256);
         while (true) {
