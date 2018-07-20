@@ -157,11 +157,11 @@ int main(int argc, char* argv[]) {
         huff.decode(br, len, code, data);
 
         std::cout << "Writing..." << std::endl;
-        for (int d : data) {
-            char c = (char)d;
-            outF.write(&c, 1);
-        }
-        std::cout << std::endl;
+        std::vector<char> cVec;
+        cVec.reserve(data.size());
+        for (int d : data)
+            cVec.push_back((char)d);
+        outF.write(&cVec[0], cVec.size());
 
     } else {
         usage();

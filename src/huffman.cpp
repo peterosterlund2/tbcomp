@@ -82,6 +82,7 @@ void HuffCode::computeTree() {
             bits = (bits + 1) << (syms[i+1].first - syms[i].first);
     }
 
+#if 0
     for (int i = 0; i < nSym; i++) {
         int len = syms[i].first;
         int sym = syms[i].second;
@@ -95,6 +96,7 @@ void HuffCode::computeTree() {
     for (int n = 0; n < (int)nodes.size(); n++) {
         std::cout << "n:" << n << " l:" << nodes[n].left << " r:" << nodes[n].right << std::endl;
     }
+#endif
 }
 
 int
@@ -165,15 +167,15 @@ void Huffman::computePrefixCode(const std::vector<U64>& freqTable, HuffCode& cod
     };
     computeLengths(tree.top().id, 0);
 
-    std::cout << "freq: " << freqTable << std::endl;
+//    std::cout << "freq: " << freqTable << std::endl;
     std::vector<U64> freqSorted(freqTable);
     std::sort(freqSorted.begin(), freqSorted.end(), std::greater<U64>());
-    std::cout << "freqS: " << freqSorted << std::endl;
+//    std::cout << "freqS: " << freqSorted << std::endl;
 
-    std::cout << "lenVec: " << lenVec << std::endl;
+//    std::cout << "lenVec: " << lenVec << std::endl;
     std::vector<int> sorted(lenVec);
     std::sort(sorted.begin(), sorted.end());
-    std::cout << "lenVecS: " << sorted << std::endl;
+//    std::cout << "lenVecS: " << sorted << std::endl;
 
     U64 totFreq = 0;
     double entr = 0.0;
@@ -191,10 +193,12 @@ void Huffman::computePrefixCode(const std::vector<U64>& freqTable, HuffCode& cod
         compr += freqTable[i] * lenVec[i];
     compr = (compr + 7) / 8;
 
+#if 0
     std::cout << "size: " << totFreq
               << " entr: " << entr << ' ' << (entr / totFreq)
               << " compr: " << compr << ' ' << (compr / (double)totFreq)
               << std::endl;
+#endif
 
     code.setSymbolLengths(lenVec);
 }
