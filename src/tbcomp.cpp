@@ -7,29 +7,10 @@
 
 #include "util.hpp"
 #include "huffman.hpp"
+#include "test.hpp"
 
 
 int main(int argc, char* argv[]) {
-#if 0
-    {
-        BitBufferWriter bw;
-
-        for (int i = 0; i < 64; i++) {
-            U64 val = (1ULL << i) - 1;
-            bw.writeBits(val, i);
-            bw.writeBits(i % 2, 1);
-        }
-
-        const std::vector<U64>& buf = bw.getBuf();
-
-        BitBufferReader br((const U8*)&buf[0]);
-        for (int i = 0; i < 64; i++) {
-            U64 val = br.readBits(i);
-            bool val2 = br.readBit();
-            std::cout << "i:" << i << " val:" << num2Hex(val) << " val2:" << val2 << std::endl;
-        }
-    }
-#endif
 #if 0
     {
         Huffman huff;
@@ -77,24 +58,6 @@ int main(int argc, char* argv[]) {
 #endif
 #if 0
     {
-        BitBufferWriter bw;
-        int N = 20;
-        for (int i = 0; i < N; i++) {
-            bw.writeU64(i);
-        }
-        std::cout << "numBits:" << bw.getNumBits() << std::endl;
-        const std::vector<U64>& buf = bw.getBuf();
-        printBits(BitBufferReader((const U8*)&buf[0]), buf.size() * 64);
-
-        BitBufferReader br((const U8*)&buf[0]);
-        for (int i = 0; i < N; i++) {
-            U64 val = br.readU64();
-            std::cout << "val:" << val << std::endl;
-        }
-    }
-#endif
-#if 1
-    {
         std::vector<U64> freq(256);
         std::vector<int> data;
         while (true) {
@@ -127,20 +90,5 @@ int main(int argc, char* argv[]) {
             std::cout << (char)d;
     }
 #endif
-#if 0
-    {
-        std::vector<U64> freq;
-        U64 a = 1;
-        U64 b = 1;
-        for (int i = 0; i < 64; i++) {
-            freq.push_back(a);
-            U64 c = a + b;
-            a = b;
-            b = c;
-        }
-        Huffman huff;
-        HuffCode code;
-        huff.computePrefixCode(freq, code);
-    }
-#endif
+    Test().runTests();
 }
