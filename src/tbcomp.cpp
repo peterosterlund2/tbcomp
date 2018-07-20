@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
         huff.computePrefixCode(freq, code);
     }
 #endif
-#if 1
+#if 0
     {
         std::vector<U64> freq;
         std::vector<int> data;
@@ -93,18 +93,38 @@ int main(int argc, char* argv[]) {
         }
     }
 #endif
-#if 0
+#if 1
     {
         std::vector<U64> freq(256);
+        std::vector<int> data;
         while (true) {
             int c = getchar();
             if (c == EOF)
                 break;
             freq[c]++;
+            data.push_back(c);
         }
         Huffman huff;
         HuffCode code;
         huff.computePrefixCode(freq, code);
+
+        BitBufferWriter bw;
+        code.toBitBuf(bw, false);
+        bw.writeU64(data.size());
+        huff.encode(data, code, bw);
+
+        std::cout << "numBits:" << bw.getNumBits() << std::endl;
+        const std::vector<U64>& buf = bw.getBuf();
+        printBits(BitBufferReader((const U8*)&buf[0]), buf.size() * 64);
+
+        std::vector<int> data2;
+        HuffCode code2;
+        BitBufferReader br((const U8*)&buf[0]);
+        code2.fromBitBuf(br, 256);
+        U64 len = br.readU64();
+        huff.decode(br, len, code, data2);
+        for (int d : data2)
+            std::cout << (char)d;
     }
 #endif
 #if 0
