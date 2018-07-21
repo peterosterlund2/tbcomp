@@ -8,10 +8,16 @@
 #include <utility>
 
 
-void HuffCode::setSymbolLengths(const std::vector<int>& bitLenVec) {
+void HuffCode::setSymbolLengths(const std::vector<int>& bitLenVec,
+                                int defaultSym) {
     symLen = bitLenVec;
-    for (int s : symLen)
+    bool trivial = true;
+    for (int s : symLen) {
         assert(s < 64);
+        if (s > 0)
+            trivial = false;
+    }
+    defaultSymbol = trivial ? defaultSym : -1;
     computeTree();
 }
 
@@ -28,6 +34,8 @@ void HuffCode::toBitBuf(BitBufferWriter& buf, bool includeNumSyms) const {
     buf.writeU64(symBits);
     for (int s : symLen)
         buf.writeBits(s, symBits);
+    if (symBits == 0)
+        buf.writeU64(defaultSymbol);
 }
 
 void HuffCode::fromBitBuf(BitBufferReader& buf) {
@@ -40,6 +48,7 @@ void HuffCode::fromBitBuf(BitBufferReader& buf, int numSyms) {
     symLen.resize(numSyms);
     for (int i = 0; i < numSyms; i++)
         symLen[i] = buf.readBits(symBits);
+    defaultSymbol = (symBits == 0) ? buf.readU64() : -1;
     computeTree();
 }
 
@@ -101,8 +110,8 @@ void HuffCode::computeTree() {
 
 int
 HuffCode::decodeSymbol(BitBufferReader& buf) const {
-    if (symBits.size() < 2)
-        return 0;
+    if (defaultSymbol >= 0)
+        return defaultSymbol;
 
     int n = 0;
     while (true) {
@@ -136,11 +145,14 @@ void Huffman::computePrefixCode(const std::vector<U64>& freqTable, HuffCode& cod
 
     std::vector<Node> nodes;
     std::priority_queue<Node> tree;
+    int defaultSym = 0; // Default symbol in cause only one freq > 0
 
     for (int i = 0; i < nSym; i++) {
         Node n { freqTable[i], i, -1, -1 };
         nodes.push_back(n);
         tree.push(n);
+        if (freqTable[i] > 0)
+            defaultSym = i;
     }
 
     while (tree.size() > 1) {
@@ -200,7 +212,7 @@ void Huffman::computePrefixCode(const std::vector<U64>& freqTable, HuffCode& cod
               << std::endl;
 #endif
 
-    code.setSymbolLengths(lenVec);
+    code.setSymbolLengths(lenVec, defaultSym);
 }
 
 void Huffman::encode(const std::vector<int>& data, const HuffCode& code,

@@ -114,6 +114,7 @@ Test::encodeDecode(const std::vector<int>& in) {
 
 void
 Test::testEncodeDecode() {
+    encodeDecode({13,13});
     encodeDecode({1,2,3,4,5});
     encodeDecode({0,0,0});
     encodeDecode({1,10,100,1000,10000});

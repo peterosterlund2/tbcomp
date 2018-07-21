@@ -8,7 +8,8 @@
 class HuffCode {
 public:
     /** Compute canonical Huffman code from symbol lengths. */
-    void setSymbolLengths(const std::vector<int>& bitLenVec);
+    void setSymbolLengths(const std::vector<int>& bitLenVec,
+                          int defaultSym);
 
     /** Serialize to bit buffer. */
     void toBitBuf(BitBufferWriter& buf, bool includeNumSyms) const;
@@ -30,6 +31,7 @@ private:
 
     std::vector<int> symLen;  // Symbol lengths
     std::vector<U64> symBits; // Symbol bit patterns
+    int defaultSymbol = -1;   // Default symbol in case all symLen == 0
 
     struct Node {
         int left;   // Left child, or -symVal if left child is a leaf node
