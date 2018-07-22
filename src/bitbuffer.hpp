@@ -20,13 +20,16 @@ public:
     void writeU64(U64 val);
 
     /** Return total number of written bits. */
-    U64 getNumBits() const { return buf.size() * 64 + nDataBits; }
+    U64 getNumBits() const { return buf.size() * 8 + nDataBits; }
 
-    /** Return the underlying data buffer. Must not be called more than once. */
-    const std::vector<U64>& getBuf();
+    /** Return the underlying data buffer.
+     *  Must be called only once when all data has been written. */
+    const std::vector<U8>& getBuf();
 
 private:
-    std::vector<U64> buf;
+    void writeData();
+
+    std::vector<U8> buf;
     U64 data;
     int nDataBits;
 };
@@ -72,16 +75,16 @@ BitBufferWriter::writeBits(U64 val, int nBits) {
         data <<= 64 - nDataBits;
         nDataBits += nBits - 64;
         data |= val >> nDataBits;
-        buf.push_back(data);
+        writeData();
         data = val;
     }
 }
 
-inline const std::vector<U64>&
+inline const std::vector<U8>&
 BitBufferWriter::getBuf() {
     if (nDataBits > 0) {
         data <<= 64 - nDataBits;
-        buf.push_back(data);
+        writeData();
     }
     return buf;
 }

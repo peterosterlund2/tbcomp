@@ -65,10 +65,10 @@ int main(int argc, char* argv[]) {
         huff.encode(data, code, bw);
 
         std::cout << "numBits:" << bw.getNumBits() << std::endl;
-        const std::vector<U64>& buf = bw.getBuf();
-        printBits(BitBufferReader((const U8*)&buf[0]), buf.size() * 64);
+        const std::vector<U8>& buf = bw.getBuf();
+        printBits(BitBufferReader(&buf[0]), buf.size() * 8);
 
-        BitBufferReader br((const U8*)&buf[0]);
+        BitBufferReader br(&buf[0]);
         std::vector<int> data2;
         huff.decode(br, data.size(), code, data2);
         std::cout << "data2: " << data2 << std::endl;
@@ -93,12 +93,12 @@ int main(int argc, char* argv[]) {
         huff.encode(data, code, bw);
 
         std::cout << "numBits:" << bw.getNumBits() << std::endl;
-        const std::vector<U64>& buf = bw.getBuf();
-        printBits(BitBufferReader((const U8*)&buf[0]), buf.size() * 64);
+        const std::vector<U8>& buf = bw.getBuf();
+        printBits(BitBufferReader(&buf[0]), buf.size() * 8);
 
         std::vector<int> data2;
         HuffCode code2;
-        BitBufferReader br((const U8*)&buf[0]);
+        BitBufferReader br(&buf[0]);
         code2.fromBitBuf(br, 256);
         U64 len = br.readU64();
         huff.decode(br, len, code, data2);
@@ -132,8 +132,8 @@ int main(int argc, char* argv[]) {
         huff.encode(data, code, bw);
 
         std::cout << "Writing..." << std::endl;
-        const std::vector<U64>& buf = bw.getBuf();
-        outF.write((const char*)&buf[0], buf.size() * 8);
+        const std::vector<U8>& buf = bw.getBuf();
+        outF.write((const char*)&buf[0], buf.size());
 
     } else if (cmd == "huffdecomp") {
         if (argc != 4)

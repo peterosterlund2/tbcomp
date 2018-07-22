@@ -15,6 +15,22 @@ void BitBufferWriter::writeU64(U64 val) {
     }
 }
 
+void
+BitBufferWriter::writeData() {
+    U64 val = data;
+    auto i = buf.size();
+    buf.resize(i + 8);
+    buf[i++] = val & 0xff; val >>= 8;
+    buf[i++] = val & 0xff; val >>= 8;
+    buf[i++] = val & 0xff; val >>= 8;
+    buf[i++] = val & 0xff; val >>= 8;
+    buf[i++] = val & 0xff; val >>= 8;
+    buf[i++] = val & 0xff; val >>= 8;
+    buf[i++] = val & 0xff; val >>= 8;
+    buf[i++] = val & 0xff;
+}
+
+
 U64 BitBufferReader::readU64() {
     int nBits = 0;
     while (!readBit())

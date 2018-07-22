@@ -25,8 +25,8 @@ Test::testReadWriteBits() {
             bw.writeBits(i % 2, 1);
         }
 
-        const std::vector<U64>& buf = bw.getBuf();
-        BitBufferReader br((const U8*)&buf[0]);
+        const std::vector<U8>& buf = bw.getBuf();
+        BitBufferReader br(&buf[0]);
         for (int i = 0; i < 64; i++) {
             U64 val = br.readBits(i);
             bool val2 = br.readBit();
@@ -43,8 +43,8 @@ Test::testReadWriteBits() {
                 bw.writeBits(i, bits);
             }
 
-            const std::vector<U64>& buf = bw.getBuf();
-            BitBufferReader br((const U8*)&buf[0]);
+            const std::vector<U8>& buf = bw.getBuf();
+            BitBufferReader br(&buf[0]);
             for (int i = 0; i < (1<<bits); i++) {
                 for (int j = bits-1; j >= 0; j--) {
                     bool b = k ? br.readBits(1) : br.readBit();
@@ -66,8 +66,8 @@ Test::testReadWriteU64() {
     U64 val = 1000000000000000000ULL;
     bw.writeU64(val);
 
-    const std::vector<U64>& buf = bw.getBuf();
-    BitBufferReader br((const U8*)&buf[0]);
+    const std::vector<U8>& buf = bw.getBuf();
+    BitBufferReader br(&buf[0]);
     for (int i = 0; i < N; i++) {
         U64 val = br.readU64();
         assert(val == (U64)i);
@@ -94,13 +94,13 @@ Test::encodeDecode(const std::vector<int>& in) {
         bw.writeU64(N);
         huff.encode(in, code, bw);
     }
-    const std::vector<U64>& buf = bw.getBuf();
+    const std::vector<U8>& buf = bw.getBuf();
 
     std::vector<int> out;
     {
         Huffman huff;
         HuffCode code;
-        BitBufferReader br((const U8*)&buf[0]);
+        BitBufferReader br(&buf[0]);
 
         code.fromBitBuf(br);
         U64 len = br.readU64();
@@ -148,8 +148,8 @@ Test::testFibFreq() {
     BitBufferWriter bw;
     huff.encode(data, code, bw);
 
-    const std::vector<U64>& buf = bw.getBuf();
-    BitBufferReader br((const U8*)&buf[0]);
+    const std::vector<U8>& buf = bw.getBuf();
+    BitBufferReader br(&buf[0]);
 
     std::vector<int> data2;
     huff.decode(br, N, code, data2);
