@@ -7,6 +7,7 @@
 
 #include "util.hpp"
 #include "huffman.hpp"
+#include "repair.hpp"
 #include "test.hpp"
 #include <cstdlib>
 #include <fstream>
@@ -19,8 +20,13 @@ static void usage() {
     std::cerr << " freq : Huffman code from frequencies \n";
     std::cerr << " freqdata f1 ... fn : d1 ... dn : Frequencies and data\n";
     std::cerr << " fromfile : Frequencies and data from file\n";
+
     std::cerr << " huffcomp infile outfile : Huffman compress\n";
     std::cerr << " huffdecomp infile outfile : Huffman decompress\n";
+
+    std::cerr << " repaircomp infile outfile [minFreq]: Re-pair compress\n";
+    std::cerr << " repairdecomp infile outfile : Re-pair decompress\n";
+
     std::cerr << std::flush;
     ::exit(2);
 }
@@ -162,6 +168,54 @@ int main(int argc, char* argv[]) {
         for (int d : data)
             cVec.push_back((char)d);
         outF.write(&cVec[0], cVec.size());
+
+    } else if (cmd == "repaircomp") {
+        if (argc < 4 || argc > 5)
+            usage();
+        std::ifstream inF(argv[2]);
+        std::ofstream outF(argv[3]);
+        int minFreq = 8;
+        if (argc > 4)
+            minFreq = std::atoi(argv[4]);
+        if (minFreq < 1)
+            usage();
+
+        std::cout << "Reading..." << std::endl;
+        std::vector<U8> data;
+        char c;
+        while (inF.get(c))
+            data.push_back((U8)c);
+
+        std::cout << "Compressing..." << std::endl;
+        RePairComp comp(data, minFreq);
+
+        std::cout << "Encoding..." << std::endl;
+        BitBufferWriter bw;
+        comp.toBitBuf(bw);
+
+        std::cout << "Writing..." << std::endl;
+        const std::vector<U8>& buf = bw.getBuf();
+        outF.write((const char*)&buf[0], buf.size());
+
+    } else if (cmd == "repairdecomp") {
+        if (argc != 4)
+            usage();
+        std::ifstream inF(argv[2]);
+        std::ofstream outF(argv[3]);
+
+        std::cout << "Reading..." << std::endl;
+        std::vector<U8> inData;
+        char c;
+        while (inF.get(c))
+            inData.push_back((U8)c);
+
+        std::cout << "Decoding..." << std::endl;
+        RePairDeComp deComp(&inData[0]);
+        std::vector<U8> outData;
+        deComp.deCompressAll(outData);
+
+        std::cout << "Writing..." << std::endl;
+        outF.write((const char*)&outData[0], outData.size());
 
     } else {
         usage();
