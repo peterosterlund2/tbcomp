@@ -11,24 +11,25 @@
  * of two symbols. */
 class RePairSymbol {
 public:
-    void setPrimitive(U16 sym);       // Set to a primitive symbol
-    void setPair(U16 lSym, U16 rSym); // Set to a non-primitive symbol
-    void setLength(U64 l, int d);     // Set symbol length to l
+    void setPrimitive(U16 sym);        // Set to a primitive symbol
+    void setPair(U16 lSym, U16 rSym);  // Set to a non-primitive symbol
+    void setLengthDepth(U64 l, int d); // Set symbol length to l and depth to d
 
-    bool isPrimitive() const;         // True if pair is not composed of two parts
-    U16 getValue() const;             // For a primitive pair, get the symbol value
+    bool isPrimitive() const;          // True if pair is not composed of two parts
+    U16 getValue() const;              // For a primitive pair, get the symbol value
 
     U16 getLeft() const;
     U16 getRight() const;
 
     U64 getLength() const;
+    int getDepth() const;
 
-    int depth = 1;
 private:
     U16 left;      // For a non primitive symbol, the left part of the pair
     U16 right;     // For a non primitive symbol, the right part of the pair
     U64 len;       // Total number of primitive symbols this symbol consists of
-    const int INV = 0xffff;
+    int depth;
+    static const int INV = 0xffff;
 };
 
 
@@ -85,6 +86,7 @@ inline void RePairSymbol::setPrimitive(U16 sym) {
     left = INV;
     right = sym;
     len = 1;
+    depth = 1;
 }
 
 inline void RePairSymbol::setPair(U16 lSym, U16 rSym) {
@@ -92,7 +94,7 @@ inline void RePairSymbol::setPair(U16 lSym, U16 rSym) {
     right = rSym;
 }
 
-inline void RePairSymbol::setLength(U64 l, int d) {
+inline void RePairSymbol::setLengthDepth(U64 l, int d) {
     len = l;
     depth = d;
 }
@@ -115,6 +117,10 @@ inline U16 RePairSymbol::getRight() const {
 
 inline U64 RePairSymbol::getLength() const {
     return len;
+}
+
+inline int RePairSymbol::getDepth() const {
+    return depth;
 }
 
 

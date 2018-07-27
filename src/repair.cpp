@@ -63,8 +63,10 @@ RePairComp::compress(U64 minFreq) {
     struct PairCand {
         U16 p1;
         U16 p2;
+        int depth;
         U64 freq;
         std::vector<U64> indices;
+        U64 freqPrio() const { return (freq << 8) + 255 - depth; }
         U64 cachePrio() const { return (indices.empty() ? bigNum : 0) + freq; }
     };
     struct Pair { };
@@ -81,7 +83,7 @@ RePairComp::compress(U64 minFreq) {
                 >
             >,
             ordered_non_unique< tag<Freq>,
-                member<PairCand,U64,&PairCand::freq>,
+                const_mem_fun<PairCand,U64,&PairCand::freqPrio>,
                 std::greater<U64>
             >,
             ordered_non_unique< tag<Cache>,
@@ -127,7 +129,7 @@ RePairComp::compress(U64 minFreq) {
         for (int j = 0; j < 256; j++) {
             U64 f = initialFreq[i][j];
             if (f >= minFreq)
-                pairCands.insert(PairCand{(U16)i,(U16)j,f});
+                pairCands.insert(PairCand{(U16)i,(U16)j,2,f});
         }
     }
 
@@ -144,13 +146,13 @@ RePairComp::compress(U64 minFreq) {
         const U16 Z = (U16)symbols.size();
         RePairSymbol newSym;
         newSym.setPair(X, Y);
-        newSym.setLength(symbols[X].getLength() + symbols[Y].getLength(),
-                         std::max(symbols[X].depth, symbols[Y].depth)+1);
+        newSym.setLengthDepth(symbols[X].getLength() + symbols[Y].getLength(),
+                              std::max(symbols[X].getDepth(), symbols[Y].getDepth())+1);
         symbols.push_back(newSym);
         const int nSym = symbols.size();
 
         std::cout << "XY->Z: " << X << ' ' << Y << ' ' << Z
-                  << " len:" << newSym.getLength() << " depth:" << newSym.depth << std::endl;
+                  << " len:" << newSym.getLength() << " depth:" << newSym.getDepth() << std::endl;
 
         deltaFreqAZ.resize(nSym);
         deltaFreqZB.resize(nSym);
@@ -211,7 +213,8 @@ RePairComp::compress(U64 minFreq) {
                 if (f != 0) {
                     ((k == 0) ? deltaFreqAZ[i] : deltaFreqZB[i]) = 0;
                     if (f >= minFreq) {
-                        pairCands.insert(PairCand{(U16)p1,(U16)p2,f});
+                        int d = std::max(symbols[i].getDepth(), symbols[Z].getDepth()) + 1;
+                        pairCands.insert(PairCand{(U16)p1,(U16)p2,d,f});
                         nAdded++;
                     }
                 }
@@ -226,8 +229,7 @@ RePairComp::compress(U64 minFreq) {
                     ((k == 0) ? deltaFreqAX[i] : deltaFreqYB[i]) = 0;
                     auto it = pairCands.get<Pair>().find(std::make_tuple(p1,p2));
                     if (it != pairCands.get<Pair>().end()) {
-                        auto it2 = pairCands.project<Freq>(it);
-                        pairCands.get<Freq>().modify_key(it2, [d](U64& f) { f -= d; });
+                        pairCands.get<Pair>().modify(it, [d](PairCand& pc) { pc.freq -= d; });
                         if (it->freq < minFreq) {
                             pairCands.get<Pair>().erase(it);
                             nRemoved++;
@@ -258,10 +260,10 @@ void RePairDeComp::deCompressAll(std::vector<U8>& outData) {
         if (!symbols[i].isPrimitive()) {
             len = symbols[left].getLength() +
                   symbols[right].getLength();
-            d = std::max(symbols[left].depth,
-                         symbols[right].depth) + 1;
+            d = std::max(symbols[left].getDepth(),
+                         symbols[right].getDepth()) + 1;
         }
-        symbols[i].setLength(len, d);
+        symbols[i].setLengthDepth(len, d);
     }
 
     HuffCode code;
