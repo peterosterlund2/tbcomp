@@ -103,6 +103,7 @@ RePairComp::compress(U64 minFreq) {
     for (int i = 0; i < 256; i++)
         primitiveSyms[i] = 0;
     const U64 dataLen = data.size();
+    U64 comprSize = dataLen;
     for (U64 i = 0; i < dataLen; i++)
         primitiveSyms[data[i]] = 1;
     for (int i = 0; i < 256; i++) {
@@ -238,8 +239,9 @@ RePairComp::compress(U64 minFreq) {
                 }
             }
         }
+        comprSize -= nRepl;
         std::cout << "nRepl:" << nRepl << " nAdded:" << nAdded << " nRemoved:" << nRemoved
-                  << " size:" << pairCands.size() << std::endl;
+                  << " nCand:" << pairCands.size() << " compr:" << comprSize << std::endl;
 
         while (pairCands.size() > 32*1024*1024)
             pairCands.get<Freq>().erase(--pairCands.get<Freq>().end());
