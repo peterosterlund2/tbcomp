@@ -53,6 +53,8 @@ private:
 
     /** Return the symbol at index 'idx', or -1 if no symbol at that index. */
     int getData(U64 idx) const;
+    /** Return symbol at "idx" and advance idx to next symbol. */
+    int getNextSymbol(U64& idx) const;
 
     std::vector<RePairSymbol> symbols;
     std::vector<U8>& data;
@@ -147,6 +149,14 @@ RePairComp::getData(U64 idx) const {
     return -1;
 }
 
+inline int
+RePairComp::getNextSymbol(U64& idx) const {
+    if (idx >= data.size())
+        return -1;
+    int ret = getData(idx);
+    idx += symbols[ret].getLength();
+    return ret;
+};
 
 inline RePairDeComp::RePairDeComp(const U8* inData)
     : data(inData) {

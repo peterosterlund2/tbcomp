@@ -6,6 +6,7 @@
 #include <boost/multi_index/composite_key.hpp>
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/mem_fun.hpp>
+#include <unordered_map>
 #include <cassert>
 #include <iostream>
 
@@ -87,17 +88,19 @@ RePairComp::compress(U64 minFreq) {
                 std::greater<U64>
             >,
             ordered_non_unique< tag<Cache>,
-                const_mem_fun<PairCand,U64,&PairCand::cachePrio>
+                const_mem_fun<PairCand,U64,&PairCand::cachePrio>,
+                std::greater<U64>
             >
         >
     >;
     PairCandSet pairCands;
 
     const U64 maxCache = std::max(U64(32*1024*1024), data.size() / 1024);
-//    U64 cacheSize = 0; // Sum of indices.size() for all PairCand
+    S64 cacheSize = 0; // Sum of indices.size() for all PairCand
     // Delta frequencies when transforming AXYB -> AZB
     std::vector<S64> deltaFreqAZ, deltaFreqZB;
     std::vector<S64> deltaFreqAX, deltaFreqYB;
+    std::vector<std::vector<U64>> vecAZ, vecZB;
 
     int primitiveSyms[256];
     for (int i = 0; i < 256; i++)
@@ -138,8 +141,53 @@ RePairComp::compress(U64 minFreq) {
         if (symbols.size() >= 65535)
             break;
         auto it = pairCands.get<Freq>().begin();
-        if (it->indices.empty() && it->freq * 4 <= maxCache) {
-            // Refill cache
+        assert(cacheSize >= 0);
+        if (it->indices.empty() && it->freq * 8 <= maxCache) { // Refill cache
+            std::unordered_map<U32, std::vector<U64>> cache;
+            S64 newCacheSize = 0;
+            for (const auto& ce : pairCands.get<Cache>()) {
+                if (!ce.indices.empty())
+                    break;
+                while (cacheSize + newCacheSize + ce.freq > maxCache) {
+                    auto it2 = pairCands.get<Cache>().end(); --it2;
+                    if (it2->indices.empty() || it2->freq >= ce.freq)
+                        break;
+                    cacheSize -= it2->indices.size();
+                    std::cout << "uncache: " << it2->p1 << ' ' << it2->p2 << " freq:" << it2->freq
+                              << " estCacheSize:" << (cacheSize + newCacheSize + ce.freq) << std::endl;
+                    pairCands.get<Cache>().modify(it2, [](PairCand& pc){ pc.indices.clear(); });
+                }
+                if (cacheSize + newCacheSize + ce.freq > maxCache)
+                    break;
+                U32 xy = (ce.p1 << 16) | ce.p2;
+                cache.insert(std::make_pair(xy, std::vector<U64>()));
+                newCacheSize += ce.freq;
+                std::cout << "tocache: " << ce.p1 << ' ' << ce.p2 << " freq:" << ce.freq
+                          << " estCacheSize:" << (cacheSize + newCacheSize) << std::endl;
+            }
+            {
+                U64 idx = 0;
+                U64 idxX = idx; int x = getNextSymbol(idx);
+                U64 idxY = idx; int y = getNextSymbol(idx);
+                while (y != -1) {
+                    U32 key = (((U16)x) << 16) | (U16)y;
+                    auto it = cache.find(key);
+                    if (it != cache.end())
+                        it->second.push_back(idxX);
+                    idxX = idxY; x = y;
+                    idxY = idx;  y = getNextSymbol(idx);
+                }
+            }
+            for (auto& e : cache) {
+                U32 xy = e.first;
+                U16 x = (U16)(xy >> 16);
+                U16 y = (U16)(xy & 0xffff);
+                std::vector<U64>& vec = e.second;
+                auto it2 = pairCands.get<Pair>().find(std::make_tuple(x,y));
+                cacheSize += vec.size();
+                pairCands.get<Pair>().modify(it2, [&vec](PairCand& pc) { pc.indices = std::move(vec); });
+            }
+            std::cout << "refill cache: nElem:" << cache.size() << " cacheSize:" << cacheSize << std::endl;
         }
 
         const U16 X = it->p1;
@@ -155,20 +203,13 @@ RePairComp::compress(U64 minFreq) {
         std::cout << "XY->Z: " << X << ' ' << Y << ' ' << Z
                   << " len:" << newSym.getLength() << " depth:" << newSym.getDepth() << std::endl;
 
-        deltaFreqAZ.resize(nSym);
-        deltaFreqZB.resize(nSym);
+        deltaFreqAZ.resize(nSym); vecAZ.resize(nSym);
+        deltaFreqZB.resize(nSym); vecZB.resize(nSym);
         deltaFreqAX.resize(nSym);
         deltaFreqYB.resize(nSym);
 
         int nRepl = 0;
         if (it->indices.empty()) {
-            auto getNextSymbol = [this,dataLen](U64& idx) -> int {
-                if (idx >= dataLen)
-                    return -1;
-                int ret = getData(idx);
-                idx += symbols[ret].getLength();
-                return ret;
-            };
             U64 idx = 0;
             int a = -1;
             U64 idxX = idx; int x = getNextSymbol(idx);
@@ -201,10 +242,32 @@ RePairComp::compress(U64 minFreq) {
                 }
             }
         } else {
-            // Use indices
+            for (U64 idxX : it->indices) {
+                U64 idx = idxX; int x = getNextSymbol(idx); if (x != X) continue;
+                U64 idxY = idx; int y = getNextSymbol(idx); if (y != Y) continue;
+                int b = getNextSymbol(idx);
+                U64 idxA = idxX - 1; int a = -1;
+                if (idxX > 0)
+                    while (true)
+                        if (((a = getData(idxA)) != -1) || (idxA-- == 0))
+                            break;
+                if (a != -1) {
+                    deltaFreqAZ[a]++; vecAZ[a].push_back(idxA);
+                    deltaFreqAX[a]--;
+                }
+                if (b != -1) {
+                    deltaFreqZB[b]++; vecZB[b].push_back(idxX);
+                    deltaFreqYB[b]--;
+                }
+                data[idxX] = (U8)(Z & 0xff);
+                data[idxX+1] = (U8)(Z >> 8);
+                setUsedIdx(idxY, false);
+                nRepl++;
+            }
         }
 
         int nAdded = 0, nRemoved = 0;
+        cacheSize -= it->indices.size();
         pairCands.get<Freq>().erase(it);
         for (int i = 0; i < nSym; i++) {
             for (int k = 0; k < 2; k++) {
@@ -213,11 +276,16 @@ RePairComp::compress(U64 minFreq) {
                 U64 f  = (k == 0) ? deltaFreqAZ[i] : deltaFreqZB[i];
                 if (f != 0) {
                     ((k == 0) ? deltaFreqAZ[i] : deltaFreqZB[i]) = 0;
+                    std::vector<U64>& vec = (k == 0) ? vecAZ[i] : vecZB[i];
                     if (f >= minFreq) {
                         int d = std::max(symbols[i].getDepth(), symbols[Z].getDepth()) + 1;
-                        pairCands.insert(PairCand{(U16)p1,(U16)p2,d,f});
+                        PairCand pc { (U16)p1, (U16)p2, d, f };
+                        cacheSize += vec.size();
+                        pc.indices = std::move(vec);
+                        pairCands.insert(std::move(pc));
                         nAdded++;
                     }
+                    vec.clear();
                 }
             }
         }
@@ -228,11 +296,12 @@ RePairComp::compress(U64 minFreq) {
                 S64 d  = (k == 0) ? -deltaFreqAX[i] : -deltaFreqYB[i];
                 if (d != 0) {
                     ((k == 0) ? deltaFreqAX[i] : deltaFreqYB[i]) = 0;
-                    auto it = pairCands.get<Pair>().find(std::make_tuple(p1,p2));
-                    if (it != pairCands.get<Pair>().end()) {
-                        pairCands.get<Pair>().modify(it, [d](PairCand& pc) { pc.freq -= d; });
-                        if (it->freq < minFreq) {
-                            pairCands.get<Pair>().erase(it);
+                    auto it2 = pairCands.get<Pair>().find(std::make_tuple(p1,p2));
+                    if (it2 != pairCands.get<Pair>().end()) {
+                        pairCands.get<Pair>().modify(it2, [d](PairCand& pc) { pc.freq -= d; });
+                        if (it2->freq < minFreq) {
+                            cacheSize -= it2->indices.size();
+                            pairCands.get<Pair>().erase(it2);
                             nRemoved++;
                         }
                     }
@@ -241,10 +310,14 @@ RePairComp::compress(U64 minFreq) {
         }
         comprSize -= nRepl;
         std::cout << "nRepl:" << nRepl << " nAdded:" << nAdded << " nRemoved:" << nRemoved
-                  << " nCand:" << pairCands.size() << " compr:" << comprSize << std::endl;
+                  << " nCand:" << pairCands.size() << " cache:" << cacheSize
+                  << " compr:" << comprSize << std::endl;
 
-        while (pairCands.size() > 32*1024*1024)
-            pairCands.get<Freq>().erase(--pairCands.get<Freq>().end());
+        while (pairCands.size() > 32*1024*1024) {
+            auto it2 = --pairCands.get<Freq>().end();
+            cacheSize -= it2->indices.size();
+            pairCands.get<Freq>().erase(it2);
+        }
     }
 }
 
