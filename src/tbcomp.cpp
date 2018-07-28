@@ -24,7 +24,7 @@ static void usage() {
     std::cerr << " huffcomp infile outfile : Huffman compress\n";
     std::cerr << " huffdecomp infile outfile : Huffman decompress\n";
 
-    std::cerr << " repaircomp infile outfile [minFreq]: Re-pair compress\n";
+    std::cerr << " repaircomp infile outfile [minFreq [maxSyms]]: Re-pair compress\n";
     std::cerr << " repairdecomp infile outfile : Re-pair decompress\n";
 
     std::cerr << std::flush;
@@ -170,7 +170,7 @@ int main(int argc, char* argv[]) {
         outF.write(&cVec[0], cVec.size());
 
     } else if (cmd == "repaircomp") {
-        if (argc < 4 || argc > 5)
+        if (argc < 4 || argc > 6)
             usage();
         std::ifstream inF(argv[2]);
         std::ofstream outF(argv[3]);
@@ -178,6 +178,11 @@ int main(int argc, char* argv[]) {
         if (argc > 4)
             minFreq = std::atoi(argv[4]);
         if (minFreq < 1)
+            usage();
+        int maxSyms = 65535;
+        if (argc > 5)
+            maxSyms = std::atoi(argv[5]);
+        if (maxSyms < 256 || maxSyms > 65535)
             usage();
 
         std::cout << "Reading..." << std::endl;
@@ -187,7 +192,7 @@ int main(int argc, char* argv[]) {
             data.push_back((U8)c);
 
         std::cout << "Compressing..." << std::endl;
-        RePairComp comp(data, minFreq);
+        RePairComp comp(data, minFreq, maxSyms);
 
         std::cout << "Encoding..." << std::endl;
         BitBufferWriter bw;

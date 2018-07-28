@@ -11,10 +11,10 @@
 #include <iostream>
 
 
-RePairComp::RePairComp(std::vector<U8>& inData, int minFreq)
+RePairComp::RePairComp(std::vector<U8>& inData, int minFreq, int maxSyms)
     : data(inData) {
     usedIdx.assign((inData.size() + 63) / 64, ~(0ULL));
-    compress((U64)minFreq);
+    compress((U64)minFreq, maxSyms);
 }
 
 void RePairComp::toBitBuf(BitBufferWriter& out) {
@@ -55,7 +55,7 @@ void RePairComp::toBitBuf(BitBufferWriter& out) {
 }
 
 void
-RePairComp::compress(U64 minFreq) {
+RePairComp::compress(U64 minFreq, int maxSyms) {
     using namespace boost;
     using namespace boost::multi_index;
 
@@ -138,7 +138,7 @@ RePairComp::compress(U64 minFreq) {
     }
 
     while (!pairCands.empty()) {
-        if (symbols.size() >= 65535)
+        if ((int)symbols.size() >= maxSyms)
             break;
         auto it = pairCands.get<Freq>().begin();
         assert(cacheSize >= 0);

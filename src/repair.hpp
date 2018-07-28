@@ -40,13 +40,13 @@ public:
     /** Run the re-pair algorithm. "inData" is overwritten.
      * "inData" must live longer than this object.
      * Uses inData.size()/8+O(1) extra memory. */
-    RePairComp(std::vector<U8>& inData, int minFreq);
+    RePairComp(std::vector<U8>& inData, int minFreq, int maxSyms);
 
     /** Create compressed representation of the data. */
     void toBitBuf(BitBufferWriter& out);
 
 private:
-    void compress(U64 minFreq);
+    void compress(U64 minFreq, int maxSyms);
 
     bool getUsedIdx(U64 idx) const;
     void setUsedIdx(U64 idx, bool val);
