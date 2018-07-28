@@ -145,6 +145,7 @@ RePairComp::compress(U64 minFreq) {
         if (it->indices.empty() && it->freq * 8 <= maxCache) { // Refill cache
             std::unordered_map<U32, std::vector<U64>> cache;
             S64 newCacheSize = 0;
+            U64 minCacheFreq = maxCache;
             for (const auto& ce : pairCands.get<Cache>()) {
                 if (!ce.indices.empty())
                     break;
@@ -153,8 +154,6 @@ RePairComp::compress(U64 minFreq) {
                     if (it2->indices.empty() || it2->freq >= ce.freq)
                         break;
                     cacheSize -= it2->indices.size();
-                    std::cout << "uncache: " << it2->p1 << ' ' << it2->p2 << " freq:" << it2->freq
-                              << " estCacheSize:" << (cacheSize + newCacheSize + ce.freq) << std::endl;
                     pairCands.get<Cache>().modify(it2, [](PairCand& pc){ pc.indices.clear(); });
                 }
                 if (cacheSize + newCacheSize + ce.freq > maxCache)
@@ -162,9 +161,9 @@ RePairComp::compress(U64 minFreq) {
                 U32 xy = (ce.p1 << 16) | ce.p2;
                 cache.insert(std::make_pair(xy, std::vector<U64>()));
                 newCacheSize += ce.freq;
-                std::cout << "tocache: " << ce.p1 << ' ' << ce.p2 << " freq:" << ce.freq
-                          << " estCacheSize:" << (cacheSize + newCacheSize) << std::endl;
+                minCacheFreq = std::min(minCacheFreq, ce.freq);
             }
+            std::cout << "refill cache: nElem:" << cache.size() << " minFreq:" << minCacheFreq << std::endl;
             {
                 U64 idx = 0;
                 U64 idxX = idx; int x = getNextSymbol(idx);
