@@ -59,8 +59,6 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
     using namespace boost;
     using namespace boost::multi_index;
 
-    static const U64 bigNum = 0x8000000000000000ULL;
-
     struct PairCand {
         U16 p1;
         U16 p2;
@@ -68,7 +66,7 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
         U64 freq;
         std::vector<U64> indices;
         U64 freqPrio() const { return (freq << 8) + 255 - depth; }
-        U64 cachePrio() const { return (indices.empty() ? bigNum : 0) + freq; }
+        U64 cachePrio() const { return (indices.empty() ? (1ULL<<63) : 0) + freq; }
     };
     struct Pair { };
     struct Freq { };
