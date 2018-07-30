@@ -31,6 +31,15 @@ static void usage() {
     ::exit(2);
 }
 
+static void
+readFile(std::ifstream& inF, std::vector<U8>& data) {
+    inF.seekg(0, std::ios::end);
+    U64 len = inF.tellg();
+    inF.seekg(0, std::ios::beg);
+    data.resize(len);
+    inF.read((char*)&data[0], len);
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 2)
         usage();
@@ -149,9 +158,7 @@ int main(int argc, char* argv[]) {
 
         std::cout << "Reading..." << std::endl;
         std::vector<U8> inData;
-        char c;
-        while (inF.get(c))
-            inData.push_back((U8)c);
+        readFile(inF, inData);
 
         std::cout << "Decoding..." << std::endl;
         BitBufferReader br(&inData[0]);
@@ -187,9 +194,7 @@ int main(int argc, char* argv[]) {
 
         std::cout << "Reading..." << std::endl;
         std::vector<U8> data;
-        char c;
-        while (inF.get(c))
-            data.push_back((U8)c);
+        readFile(inF, data);
 
         std::cout << "Compressing..." << std::endl;
         RePairComp comp(data, minFreq, maxSyms);
@@ -210,9 +215,7 @@ int main(int argc, char* argv[]) {
 
         std::cout << "Reading..." << std::endl;
         std::vector<U8> inData;
-        char c;
-        while (inF.get(c))
-            inData.push_back((U8)c);
+        readFile(inF, inData);
 
         std::cout << "Decoding..." << std::endl;
         RePairDeComp deComp(&inData[0]);
