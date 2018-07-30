@@ -100,38 +100,39 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
     std::vector<S64> deltaFreqAX, deltaFreqYB;
     std::vector<std::vector<U64>> vecAZ, vecZB;
 
-    int primitiveSyms[256];
-    for (int i = 0; i < 256; i++)
-        primitiveSyms[i] = 0;
     const U64 dataLen = data.size();
     U64 comprSize = dataLen;
-    for (U64 i = 0; i < dataLen; i++)
-        primitiveSyms[data[i]] = 1;
-    for (int i = 0; i < 256; i++) {
-        if (primitiveSyms[i]) {
-            RePairSymbol s;
-            s.setPrimitive(i);
-            primitiveSyms[i] = symbols.size();
-            symbols.push_back(s);
-            std::cout << "sym:" << primitiveSyms[i] << " val:" << i << std::endl;
+    {
+        int primitiveSyms[256];
+        for (int i = 0; i < 256; i++)
+            primitiveSyms[i] = 0;
+        for (U64 i = 0; i < dataLen; i++)
+            primitiveSyms[data[i]] = 1;
+        for (int i = 0; i < 256; i++) {
+            if (primitiveSyms[i]) {
+                RePairSymbol s;
+                s.setPrimitive(i);
+                primitiveSyms[i] = symbols.size();
+                symbols.push_back(s);
+                std::cout << "sym:" << primitiveSyms[i] << " val:" << i << std::endl;
+            }
         }
+        for (U64 i = 0; i < dataLen; i++)
+            data[i] = primitiveSyms[data[i]];
     }
-    for (U64 i = 0; i < dataLen; i++)
-        data[i] = primitiveSyms[data[i]];
-
-    U64 initialFreq[256][256];
-    for (int i = 0; i < 256; i++)
-        for (int j = 0; j < 256; j++)
-            initialFreq[i][j] = 0;
-
-    for (U64 i = 1; i < dataLen; i++)
-        initialFreq[data[i-1]][data[i]]++;
-
-    for (int i = 0; i < 256; i++) {
-        for (int j = 0; j < 256; j++) {
-            U64 f = initialFreq[i][j];
-            if (f >= minFreq)
-                pairCands.insert(PairCand{(U16)i,(U16)j,2,f});
+    {
+        U64 initialFreq[256][256];
+        for (int i = 0; i < 256; i++)
+            for (int j = 0; j < 256; j++)
+                initialFreq[i][j] = 0;
+        for (U64 i = 1; i < dataLen; i++)
+            initialFreq[data[i-1]][data[i]]++;
+        for (int i = 0; i < 256; i++) {
+            for (int j = 0; j < 256; j++) {
+                U64 f = initialFreq[i][j];
+                if (f >= minFreq)
+                    pairCands.insert(PairCand{(U16)i,(U16)j,2,f});
+            }
         }
     }
 
