@@ -1,5 +1,5 @@
 #include "huffman.hpp"
-#include "util.hpp"
+#include "tbutil.hpp"
 #include <queue>
 #include <functional>
 #include <algorithm>

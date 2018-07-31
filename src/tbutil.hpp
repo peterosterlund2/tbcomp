@@ -1,7 +1,7 @@
-#ifndef UTIL_HPP_
-#define UTIL_HPP_
+#ifndef TBUTIL_HPP_
+#define TBUTIL_HPP_
 
-#include "types.hpp"
+#include "util/util.hpp"
 #include "bitbuffer.hpp"
 #include <string>
 #include <vector>
@@ -23,13 +23,6 @@ std::ostream& operator<<(std::ostream& os, const std::vector<T>& v) {
     }
     os << " ]";
     return os;
-}
-
-inline std::string
-num2Hex(U64 num) {
-    std::stringstream ss;
-    ss << std::hex << std::setw(16) << std::setfill('0') << num;
-    return ss.str();
 }
 
 inline void
@@ -57,4 +50,4 @@ toBits(U64 val, int nBits) {
     return ss.str();
 }
 
-#endif /* UTIL_HPP_ */
+#endif /* TBUTIL_HPP_ */

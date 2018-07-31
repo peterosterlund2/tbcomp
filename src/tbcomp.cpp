@@ -5,7 +5,7 @@
  *      Author: petero
  */
 
-#include "util.hpp"
+#include "tbutil.hpp"
 #include "huffman.hpp"
 #include "repair.hpp"
 #include "test.hpp"

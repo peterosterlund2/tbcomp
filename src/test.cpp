@@ -1,6 +1,6 @@
 #include "test.hpp"
 #include "huffman.hpp"
-#include "util.hpp"
+#include "tbutil.hpp"
 #include <utility>
 #include <algorithm>
 #include <iostream>

@@ -1,8 +1,7 @@
 #ifndef BITBUFFER_HPP_
 #define BITBUFFER_HPP_
 
-#include "types.hpp"
-#include <vector>
+#include "util/util.hpp"
 
 
 class BitBufferWriter {
