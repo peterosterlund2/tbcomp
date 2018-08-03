@@ -206,7 +206,7 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
         deltaFreqAX.resize(nSym);
         deltaFreqYB.resize(nSym);
 
-        int nRepl = 0;
+        U64 nRepl = 0;
         if (it->indices.empty()) {
             U64 idx = 0;
             int a = -1;
