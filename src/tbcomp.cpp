@@ -9,9 +9,12 @@
 #include "huffman.hpp"
 #include "repair.hpp"
 #include "test.hpp"
+#include "position.hpp"
+#include "posindex.hpp"
 #include <cstdlib>
 #include <fstream>
 
+static void wdlDump(int argc, char* argv[]);
 
 static void usage() {
     std::cerr << "Usage: tbcomp cmd params\n";
@@ -26,6 +29,8 @@ static void usage() {
 
     std::cerr << " repaircomp infile outfile [minFreq [maxSyms]]: Re-pair compress\n";
     std::cerr << " repairdecomp infile outfile : Re-pair decompress\n";
+
+    std::cerr << " wdldump nwq nwr nwb nwn nwp  nbq nbr nbb nbn nbp\n";
 
     std::cerr << std::flush;
     ::exit(2);
@@ -225,7 +230,40 @@ int main(int argc, char* argv[]) {
         std::cout << "Writing..." << std::endl;
         outF.write((const char*)&outData[0], outData.size());
 
+    } else if (cmd == "wdldump") {
+        if (argc != 12)
+            usage();
+        wdlDump(argc, argv);
+
     } else {
         usage();
     }
+}
+
+static void wdlDump(int argc, char* argv[]) {
+    Position pos;
+    pos.setPiece(H6, Piece::WKING);
+    pos.setPiece(D8, Piece::BKING);
+
+    int idx = 0;
+    int squares[] = { A2, B2, C2, A3, B3, C3, A4, B4, C4 };
+    auto placePieces = [&pos,&idx,&squares](int num, int type) {
+        for (int i = 0; i < num; i++)
+            pos.setPiece(squares[idx++], type);
+    };
+
+    placePieces(std::atoi(argv[2]), Piece::WQUEEN);
+    placePieces(std::atoi(argv[3]), Piece::WROOK);
+    placePieces(std::atoi(argv[4]), Piece::WBISHOP);
+    placePieces(std::atoi(argv[5]), Piece::WKNIGHT);
+    placePieces(std::atoi(argv[6]), Piece::WPAWN);
+
+    placePieces(std::atoi(argv[7]), Piece::BQUEEN);
+    placePieces(std::atoi(argv[8]), Piece::BROOK);
+    placePieces(std::atoi(argv[9]), Piece::BBISHOP);
+    placePieces(std::atoi(argv[10]), Piece::BKNIGHT);
+    placePieces(std::atoi(argv[11]), Piece::BPAWN);
+
+    PosIndex posIdx(pos);
+    std::cout << posIdx.tbSize() << std::endl;
 }
