@@ -11,10 +11,12 @@
 #include "test.hpp"
 #include "position.hpp"
 #include "posindex.hpp"
+#include "textio.hpp"
 #include <cstdlib>
 #include <fstream>
 
 static void wdlDump(int argc, char* argv[]);
+static void idxTest(const std::string& fen);
 
 static void usage() {
     std::cerr << "Usage: tbcomp cmd params\n";
@@ -31,6 +33,7 @@ static void usage() {
     std::cerr << " repairdecomp infile outfile : Re-pair decompress\n";
 
     std::cerr << " wdldump nwq nwr nwb nwn nwp  nbq nbr nbb nbn nbp\n";
+    std::cerr << " idxtest fen\n";
 
     std::cerr << std::flush;
     ::exit(2);
@@ -235,6 +238,12 @@ int main(int argc, char* argv[]) {
             usage();
         wdlDump(argc, argv);
 
+    } else if (cmd == "idxtest") {
+        if (argc != 3)
+            usage();
+        std::string fen = argv[2];
+        idxTest(fen);
+
     } else {
         usage();
     }
@@ -266,4 +275,13 @@ static void wdlDump(int argc, char* argv[]) {
 
     PosIndex posIdx(pos);
     std::cout << posIdx.tbSize() << std::endl;
+}
+
+static void idxTest(const std::string& fen) {
+    Position pos = TextIO::readFEN(fen);
+    std::cout << TextIO::asciiBoard(pos);
+    PosIndex posIdx(pos);
+    U64 idx = posIdx.pos2Index(pos);
+    std::cout << "idx: " << idx << " size:" << posIdx.tbSize() << std::endl;
+    std::cout << TextIO::asciiBoard(pos);
 }
