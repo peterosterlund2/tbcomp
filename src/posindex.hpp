@@ -36,6 +36,11 @@ private:
     std::array<int,5> wPieces; // Q, R, B, N, P
     std::array<int,5> bPieces;
 
+    int sideFactor;             // Number of choices for wtm/!wtm (1 or 2)
+    int kingFactor;             // Number of king configurations
+    std::array<int,5> wFactors; // Number of configurations for white piece types
+    std::array<int,5> bFactors; // Number of configurations for black piece types
+
     bool hasPawn;     // True if there is at least one pawn
     bool bwSwap;      // True if white/black was swapped e.g. because white had fewer pieces than black.
     bool bwSymmetric; // If true, white/black have the same number of all piece types

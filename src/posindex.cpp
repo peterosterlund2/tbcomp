@@ -42,6 +42,16 @@ PosIndex::PosIndex(const Position& pos) {
     wPieces[4] = BitBoard::bitCount(pos.pieceTypeBB(Piece::WPAWN));
     bPieces[4] = BitBoard::bitCount(pos.pieceTypeBB(Piece::BPAWN));
 
+    int np = 16;
+    wFactors[4] = binCoeff(64 - np, wPieces[4]); np += wPieces[4];
+    bFactors[4] = binCoeff(64 - np, bPieces[4]); np += bPieces[4];
+
+    np = np - 16 + 2;
+    for (int i = 0; i < 4; i++) {
+        wFactors[i] = binCoeff(64 - np, wPieces[i]); np += wPieces[i];
+        bFactors[i] = binCoeff(64 - np, bPieces[i]); np += bPieces[i];
+    }
+
     bwSwap = false;
     int nWPieces = wPieces[0] + wPieces[1] + wPieces[2] + wPieces[3] + wPieces[4];
     int nBPieces = bPieces[0] + bPieces[1] + bPieces[2] + bPieces[3] + bPieces[4];
@@ -59,30 +69,16 @@ PosIndex::PosIndex(const Position& pos) {
     hasPawn = wPieces[4] + bPieces[4] > 0;
     bwSymmetric = wPieces == bPieces;
     assert(!(bwSwap && bwSymmetric));
+
+    sideFactor = bwSymmetric ? 1 : 2;
+    kingFactor = hasPawn ? nKingPawn : nKingNoPawn;
 }
 
 U64
 PosIndex::tbSize() const {
-    U64 ret = bwSymmetric ? 1 : 2;
-
-    ret *= hasPawn ? nKingPawn : nKingNoPawn;
-
-    int np = 0;
-    if (hasPawn) {
-        ret *= binCoeff(48 - np, wPieces[4]);
-        np += wPieces[4];
-        ret *= binCoeff(48 - np, bPieces[4]);
-        np += bPieces[4];
-    }
-
-    np += 2;
-    for (int i = 0; i < 4; i++) {
-        ret *= binCoeff(64 - np, wPieces[i]);
-        np += wPieces[i];
-        ret *= binCoeff(64 - np, bPieces[i]);
-        np += bPieces[i];
-    }
-
+    U64 ret = sideFactor * kingFactor;
+    for (int i = 0; i < 5; i++)
+        ret *= wFactors[i] * bFactors[i];
     return ret;
 }
 
@@ -112,7 +108,7 @@ PosIndex::pos2Index(Position& pos) const {
     int bKing = pos.getKingSq(false);
 
     KingIndex ki(hasPawn);
-    ret = ret * (hasPawn ? nKingPawn : nKingNoPawn) + ki.index(wKing, bKing);
+    ret = ret * kingFactor + ki.index(wKing, bKing);
     int symType = ki.symmetryType(wKing, bKing);
 
     Position symPos;
@@ -150,7 +146,7 @@ PosIndex::pos2Index(Position& pos) const {
     addIndex(Piece::WPAWN);
     addIndex(Piece::BPAWN);
 
-    occupied &= !BitBoard::maskRow1Row8;
+    occupied &= ~BitBoard::maskRow1Row8;
     occupied |= pos.pieceTypeBB(Piece::WKING, Piece::BKING);
 
     addIndex(Piece::WKNIGHT);

@@ -278,10 +278,14 @@ static void wdlDump(int argc, char* argv[]) {
 }
 
 static void idxTest(const std::string& fen) {
-    Position pos = TextIO::readFEN(fen);
-    std::cout << TextIO::asciiBoard(pos);
-    PosIndex posIdx(pos);
-    U64 idx = posIdx.pos2Index(pos);
-    std::cout << "idx: " << idx << " size:" << posIdx.tbSize() << std::endl;
-    std::cout << TextIO::asciiBoard(pos);
+    try {
+        Position pos = TextIO::readFEN(fen);
+        std::cout << TextIO::asciiBoard(pos);
+        PosIndex posIdx(pos);
+        U64 idx = posIdx.pos2Index(pos);
+        std::cout << "idx: " << idx << " size:" << posIdx.tbSize() << std::endl;
+        std::cout << TextIO::asciiBoard(pos);
+    } catch (std::exception& ex) {
+        std::cerr << "Error: " << ex.what() << std::endl;
+    }
 }
