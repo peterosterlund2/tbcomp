@@ -15,7 +15,7 @@
 #include <cstdlib>
 #include <fstream>
 
-static void wdlDump(int argc, char* argv[]);
+static void idx2Pos(int argc, char* argv[]);
 static void idxTest(const std::string& fen);
 
 static void usage() {
@@ -32,7 +32,7 @@ static void usage() {
     std::cerr << " repaircomp infile outfile [minFreq [maxSyms]]: Re-pair compress\n";
     std::cerr << " repairdecomp infile outfile : Re-pair decompress\n";
 
-    std::cerr << " wdldump nwq nwr nwb nwn nwp  nbq nbr nbb nbn nbp [idx]\n";
+    std::cerr << " idx2pos nwq nwr nwb nwn nwp  nbq nbr nbb nbn nbp  idx\n";
     std::cerr << " idxtest fen\n";
 
     std::cerr << std::flush;
@@ -233,10 +233,10 @@ int main(int argc, char* argv[]) {
         std::cout << "Writing..." << std::endl;
         outF.write((const char*)&outData[0], outData.size());
 
-    } else if (cmd == "wdldump") {
+    } else if (cmd == "idx2pos") {
         if (argc < 12 || argc > 13)
             usage();
-        wdlDump(argc, argv);
+        idx2Pos(argc, argv);
 
     } else if (cmd == "idxtest") {
         if (argc != 3)
@@ -249,7 +249,7 @@ int main(int argc, char* argv[]) {
     }
 }
 
-static void wdlDump(int argc, char* argv[]) {
+static void idx2Pos(int argc, char* argv[]) {
     Position pos;
     pos.setPiece(H6, Piece::WKING);
     pos.setPiece(D8, Piece::BKING);
