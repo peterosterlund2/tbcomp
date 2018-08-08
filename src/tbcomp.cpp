@@ -412,6 +412,7 @@ static void wdlDump(const std::string& tbType) {
             mostFreq = i;
     }
     std::cout << cnt[5] << std::endl;
+    std::cout << "invalid:" << (cnt[5] / (double)size) << std::endl;
 
     for (U64 idx = 0; idx < size; idx++)
         if (data[idx] == 3)
