@@ -8,10 +8,6 @@
 static StaticInitializer<PosIndex> posIndexInit;
 static StaticInitializer<KingIndex> kingIndexInit;
 
-// Number of legal king constellations for pawn/no pawn symmetry
-const int nKingPawn   = 2*(64-4) + 12*(64-6) + 3*6*(64-9);
-const int nKingNoPawn = 1*(36-3) + 3*(36-6) + 3*(64-6) + 3*(64-9);
-
 
 U64 PosIndex::binCoeffTable[64][maxPieces];
 
@@ -43,13 +39,23 @@ PosIndex::PosIndex(const Position& pos) {
     bPieces[4] = BitBoard::bitCount(pos.pieceTypeBB(Piece::BPAWN));
 
     int np = 16;
-    wFactors[4] = binCoeff(64 - np, wPieces[4]); np += wPieces[4];
-    bFactors[4] = binCoeff(64 - np, bPieces[4]); np += bPieces[4];
+    wFactors[4] = binCoeff(64 - np, wPieces[4]);
+    computeCombInverse(64 - np, wPieces[4], wCombInv[4]);
+    np += wPieces[4];
+
+    bFactors[4] = binCoeff(64 - np, bPieces[4]);
+    computeCombInverse(64 - np, bPieces[4], bCombInv[4]);
+    np += bPieces[4];
 
     np = np - 16 + 2;
-    for (int i = 0; i < 4; i++) {
-        wFactors[i] = binCoeff(64 - np, wPieces[i]); np += wPieces[i];
-        bFactors[i] = binCoeff(64 - np, bPieces[i]); np += bPieces[i];
+    for (int i = 3; i >= 0; i--) {
+        wFactors[i] = binCoeff(64 - np, wPieces[i]);
+        computeCombInverse(64 - np, wPieces[i], wCombInv[i]);
+        np += wPieces[i];
+
+        bFactors[i] = binCoeff(64 - np, bPieces[i]);
+        computeCombInverse(64 - np, bPieces[i], bCombInv[i]);
+        np += bPieces[i];
     }
 
     bwSwap = false;
@@ -163,15 +169,103 @@ PosIndex::pos2Index(Position& pos) const {
 
 bool
 PosIndex::index2Pos(U64 idx, Position& pos) const {
-    return false;
+    std::array<int,5> wIdx, bIdx;
+
+    for (int i = 0; i < 5; i++) {
+        int f = bFactors[i];
+        bIdx[i] = idx % f; idx /= f;
+        f = wFactors[i];
+        wIdx[i] = idx % f; idx /= f;
+    }
+
+    int kingIdx = idx % kingFactor;
+
+    int side = 0;
+    if (sideFactor > 1) {
+        idx /= kingFactor;
+        side = idx;
+    }
+    pos.setWhiteMove(side == 0);
+
+    KingIndex ki(hasPawn);
+    int wKing, bKing;
+    ki.indexToKings(kingIdx, wKing, bKing);
+    pos.setPiece(wKing, Piece::WKING);
+    pos.setPiece(bKing, Piece::BKING);
+
+    U64 occupied = BitBoard::maskRow1Row8;
+
+    auto placePieces = [&pos,&occupied](Piece::Type pt, U64 mask, bool pawn) {
+        U64 newMask = 0;
+        while (mask) {
+            int sq0 = BitBoard::extractSquare(mask);
+            int sq = sq0 + (pawn ? 8 : 0);
+            while (true) {
+                int tmp = sq0 + BitBoard::bitCount(occupied & ((1ULL<<(sq+1))-1));
+                if (tmp == sq)
+                    break;
+                sq = tmp;
+            }
+            pos.setPiece(sq, pt);
+            newMask |= 1ULL << sq;
+        }
+        occupied |= newMask;
+    };
+
+    placePieces(Piece::WPAWN, wCombInv[4][wIdx[4]], true);
+    placePieces(Piece::BPAWN, bCombInv[4][bIdx[4]], true);
+
+    if (pos.pieceTypeBB(Piece::WPAWN, Piece::BPAWN) &
+            BitBoard::sqMask((SquareName)wKing, (SquareName)bKing))
+        return false;
+
+    occupied &= ~BitBoard::maskRow1Row8;
+    occupied |= pos.pieceTypeBB(Piece::WKING, Piece::BKING);
+
+    placePieces(Piece::WKNIGHT, wCombInv[3][wIdx[3]], false);
+    placePieces(Piece::BKNIGHT, bCombInv[3][bIdx[3]], false);
+    placePieces(Piece::WBISHOP, wCombInv[2][wIdx[2]], false);
+    placePieces(Piece::BBISHOP, bCombInv[2][bIdx[2]], false);
+    placePieces(Piece::WROOK,   wCombInv[1][wIdx[1]], false);
+    placePieces(Piece::BROOK,   bCombInv[1][bIdx[1]], false);
+    placePieces(Piece::WQUEEN,  wCombInv[0][wIdx[0]], false);
+    placePieces(Piece::BQUEEN,  bCombInv[0][bIdx[0]], false);
+
+    return true;
 }
 
+void PosIndex::computeCombInverse(int a, int b, std::vector<U64>& vec) const {
+    U64 squares = (1ULL << b) - 1;
+    U64 last = squares << (a - b);
+
+    while (true) {
+        vec.push_back(squares);
+        if (squares == last)
+            break;
+        int nOnes = 0;
+        for (int i = 0; i < a; i++) {
+            if ((squares & (1ULL << i)) && !(squares & (1ULL << (i+1)))) {
+                squares |= 1ULL << (i+1);
+                squares &= ~((1ULL << (i+1)) - 1);
+                squares |= (1ULL << nOnes) - 1;
+                break;
+            }
+            if (squares & (1ULL << i))
+                nOnes++;
+        }
+    }
+
+    assert(vec.size() == binCoeff(a, b));
+}
 
 // ------------------------------------------------------------
 
 int KingIndex::symmetryTable[8][64];
 int KingIndex::indexTable[2][64][64];
 int KingIndex::symmetryTypeTable[2][64][64];
+
+int KingIndex::idxToKingNoPawn[nKingNoPawn];
+int KingIndex::idxToKingPawn[nKingPawn];
 
 void
 KingIndex::staticInitialize() {
@@ -236,7 +330,9 @@ KingIndex::staticInitialize() {
                 int bestWKing = bestScore / 64;
                 int bestBKing = bestScore % 64;
                 if (indexTable[hasPawn][bestWKing][bestBKing] == -1) {
-                    indexTable[hasPawn][bestWKing][bestBKing] = idx++;
+                    indexTable[hasPawn][bestWKing][bestBKing] = idx;
+                    (hasPawn ? idxToKingPawn : idxToKingNoPawn)[idx] = bestScore;
+                    idx++;
                 }
                 indexTable[hasPawn][wKing][bKing] = indexTable[hasPawn][bestWKing][bestBKing];
             }

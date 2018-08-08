@@ -32,7 +32,7 @@ static void usage() {
     std::cerr << " repaircomp infile outfile [minFreq [maxSyms]]: Re-pair compress\n";
     std::cerr << " repairdecomp infile outfile : Re-pair decompress\n";
 
-    std::cerr << " wdldump nwq nwr nwb nwn nwp  nbq nbr nbb nbn nbp\n";
+    std::cerr << " wdldump nwq nwr nwb nwn nwp  nbq nbr nbb nbn nbp [idx]\n";
     std::cerr << " idxtest fen\n";
 
     std::cerr << std::flush;
@@ -234,7 +234,7 @@ int main(int argc, char* argv[]) {
         outF.write((const char*)&outData[0], outData.size());
 
     } else if (cmd == "wdldump") {
-        if (argc != 12)
+        if (argc < 12 || argc > 13)
             usage();
         wdlDump(argc, argv);
 
@@ -274,7 +274,18 @@ static void wdlDump(int argc, char* argv[]) {
     placePieces(std::atoi(argv[11]), Piece::BPAWN);
 
     PosIndex posIdx(pos);
-    std::cout << posIdx.tbSize() << std::endl;
+    std::cout << "size:" << posIdx.tbSize() << std::endl;
+
+    if (argc > 12) {
+        U64 idx = std::atoll(argv[12]);
+        Position pos;
+        bool ret = posIdx.index2Pos(idx, pos);
+        if (ret) {
+            std::cout << TextIO::asciiBoard(pos) << TextIO::toFEN(pos) << std::endl;
+        } else {
+            std::cout << "Invalid position" << std::endl;
+        }
+    }
 }
 
 static void idxTest(const std::string& fen) {
@@ -285,6 +296,11 @@ static void idxTest(const std::string& fen) {
         U64 idx = posIdx.pos2Index(pos);
         std::cout << "idx: " << idx << " size:" << posIdx.tbSize() << std::endl;
         std::cout << TextIO::asciiBoard(pos);
+
+        Position pos2;
+        bool ret = posIdx.index2Pos(idx, pos2);
+        std::cout << "ret:" << (ret?1:0) << "\n" << TextIO::asciiBoard(pos2);
+
     } catch (std::exception& ex) {
         std::cerr << "Error: " << ex.what() << std::endl;
     }
