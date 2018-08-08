@@ -201,7 +201,7 @@ PosIndex::index2Pos(U64 idx, Position& pos) const {
             int sq0 = BitBoard::extractSquare(mask);
             int sq = sq0 + (pawn ? 8 : 0);
             while (true) {
-                int tmp = sq0 + BitBoard::bitCount(occupied & ((1ULL<<(sq+1))-1));
+                int tmp = sq0 + BitBoard::bitCount(occupied & ((2ULL<<sq)-1));
                 if (tmp == sq)
                     break;
                 sq = tmp;
