@@ -14,9 +14,10 @@
 #include "chessParseError.hpp"
 #include "computerPlayer.hpp"
 #include "syzygy/rtb-probe.hpp"
-#include "posindex.hpp"
 #include "parameters.hpp"
 #include "textio.hpp"
+#include "threadpool.hpp"
+#include "posindex.hpp"
 #include <cstdlib>
 #include <fstream>
 
@@ -381,27 +382,50 @@ static void wdlDump(const std::string& tbType) {
         pos.setPiece(squares[i], pieces[i]);
 
     PosIndex posIdx(pos);
-    U64 size = posIdx.tbSize();
+    const U64 size = posIdx.tbSize();
     std::cout << "size:" << size << std::endl;
 
     std::vector<U8> data(size);
+    ThreadPool<int> pool(std::thread::hardware_concurrency());
+    const U64 batchSize = std::max((U64)128*1024, size / 1024);
+    int nTasks = 0;
+    for (U64 b = 0; b < size; b += batchSize) {
+        auto task = [&posIdx,&data,size,batchSize,b](int workerNo) {
+            U64 end = std::min(b + batchSize, size);
+            for (U64 idx = b; idx < end; idx++) {
+                Position pos;
+                bool ret = posIdx.index2Pos(idx, pos);
+                if (ret && MoveGen::canTakeKing(pos))
+                    ret = false;
+                int val = 3;
+                if (ret) {
+                    int success;
+                    int wdl = Syzygy::probe_wdl(pos, &success);
+                    if (!success)
+                        throw ChessParseError("RTB probe failed, pos:" + TextIO::toFEN(pos));
+                    if (!pos.isWhiteMove())
+                        wdl = -wdl;
+                    val = wdl;
+                }
+                data[idx] = (U8)val;
+            }
+            return 0;
+        };
+        pool.addTask(task);
+        nTasks++;
+    }
+    std::cout << "nTasks:" << nTasks << std::endl;
+    for (int i = 0; i < nTasks; i++) {
+        int res;
+        pool.getResult(res);
+        if ((i+1) * 80 / nTasks > i * 80 / nTasks)
+            std::cout << "." << std::flush;
+    }
+    std::cout << std::endl;
+
     std::array<U64,6> cnt{};
     for (U64 idx = 0; idx < size; idx++) {
-        Position pos;
-        bool ret = posIdx.index2Pos(idx, pos);
-        if (ret && MoveGen::canTakeKing(pos))
-            ret = false;
-        int val = 3;
-        if (ret) {
-            int success;
-            int wdl = Syzygy::probe_wdl(pos, &success);
-            if (!success)
-                throw ChessParseError("RTB probe failed, pos:" + TextIO::toFEN(pos));
-            if (!pos.isWhiteMove())
-                wdl = -wdl;
-            val = wdl;
-        }
-        data[idx] = (U8)val;
+        int val = (S8)data[idx];
         cnt[val+2]++;
     }
 
