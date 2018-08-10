@@ -387,7 +387,7 @@ static void wdlDump(const std::string& tbType) {
 
     std::vector<U8> data(size);
     ThreadPool<int> pool(std::thread::hardware_concurrency());
-    const U64 batchSize = std::max((U64)128*1024, size / 1024);
+    const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
     int nTasks = 0;
     for (U64 b = 0; b < size; b += batchSize) {
         auto task = [&posIdx,&data,size,batchSize,b](int workerNo) {
