@@ -41,7 +41,6 @@ private:
     void computeCombInverse(int a, int b, std::vector<U64>& vec) const;
 
     bool hasPawn;     // True if there is at least one pawn
-    bool bwSwap;      // True if white/black was swapped e.g. because white had fewer pieces than black.
     bool bwSymmetric; // If true, white/black have the same number of all piece types
 
     std::array<int,5> wPieces; // Q, R, B, N, P

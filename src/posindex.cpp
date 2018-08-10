@@ -38,7 +38,7 @@ PosIndex::PosIndex(const Position& pos) {
     wPieces[4] = BitBoard::bitCount(pos.pieceTypeBB(Piece::WPAWN));
     bPieces[4] = BitBoard::bitCount(pos.pieceTypeBB(Piece::BPAWN));
 
-    bwSwap = false;
+    bool bwSwap = false;
     int nWPieces = wPieces[0] + wPieces[1] + wPieces[2] + wPieces[3] + wPieces[4];
     int nBPieces = bPieces[0] + bPieces[1] + bPieces[2] + bPieces[3] + bPieces[4];
     assert(nWPieces + nBPieces + 2 <= maxPieces);
@@ -104,7 +104,15 @@ static Position swapColors(const Position& pos) {
 
 U64
 PosIndex::pos2Index(Position& pos) const {
-    if (bwSwap || (bwSymmetric && !pos.isWhiteMove()))
+    auto bwSwap = [this,&pos]() -> bool {
+        if (BitBoard::bitCount(pos.pieceTypeBB(Piece::WQUEEN )) != wPieces[0]) return true;
+        if (BitBoard::bitCount(pos.pieceTypeBB(Piece::WROOK  )) != wPieces[1]) return true;
+        if (BitBoard::bitCount(pos.pieceTypeBB(Piece::WBISHOP)) != wPieces[2]) return true;
+        if (BitBoard::bitCount(pos.pieceTypeBB(Piece::WKNIGHT)) != wPieces[3]) return true;
+        if (BitBoard::bitCount(pos.pieceTypeBB(Piece::WPAWN  )) != wPieces[4]) return true;
+        return false;
+    };
+    if ((bwSymmetric && !pos.isWhiteMove()) || bwSwap())
         pos = swapColors(pos);
 
     U64 ret = pos.isWhiteMove() ? 0 : 1;

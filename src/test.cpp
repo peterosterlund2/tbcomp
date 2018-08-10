@@ -164,18 +164,31 @@ Test::testFibFreq() {
 
 void
 Test::testSwapColors() {
-    Position pos1;
+    {
+        Position pos1;
+        {
+            Position posType = TextIO::readFEN("krr/8/8/8/8/8/8/KQ w");
+            PosIndex pi(posType);
+            pi.index2Pos(1000, pos1);
+        }
+        Position pos2;
+        {
+            Position posType = TextIO::readFEN("KRR/8/8/8/8/8/8/kq w");
+            PosIndex pi(posType);
+            pi.index2Pos(1000, pos2);
+        }
+        assert(pos1 == pos2);
+    }
+
     {
         Position posType = TextIO::readFEN("krr/8/8/8/8/8/8/KQ w");
         PosIndex pi(posType);
-        pi.index2Pos(1000, pos1);
-    }
 
-    Position pos2;
-    {
-        Position posType = TextIO::readFEN("KRR/8/8/8/8/8/8/kq w");
-        PosIndex pi(posType);
-        pi.index2Pos(1000, pos2);
+        Position pos1 = posType;
+        Position pos2 = TextIO::readFEN("kq/8/8/8/8/8/8/KRR b");
+        U64 idx1 = pi.pos2Index(pos1);
+        U64 idx2 = pi.pos2Index(pos2);
+        std::cout << "idx1:" << idx1 << " idx2:" << idx2 << std::endl;
+        assert(idx1 == idx2);
     }
-    assert(pos1 == pos2);
 }
