@@ -38,6 +38,23 @@ PosIndex::PosIndex(const Position& pos) {
     wPieces[4] = BitBoard::bitCount(pos.pieceTypeBB(Piece::WPAWN));
     bPieces[4] = BitBoard::bitCount(pos.pieceTypeBB(Piece::BPAWN));
 
+    bwSwap = false;
+    int nWPieces = wPieces[0] + wPieces[1] + wPieces[2] + wPieces[3] + wPieces[4];
+    int nBPieces = bPieces[0] + bPieces[1] + bPieces[2] + bPieces[3] + bPieces[4];
+    assert(nWPieces + nBPieces + 2 <= maxPieces);
+    if (nWPieces < nBPieces) {
+        bwSwap = true;
+    } else if (nWPieces == nBPieces) {
+        if (std::lexicographical_compare(wPieces.begin(), wPieces.end(),
+                                         bPieces.begin(), bPieces.end()))
+            bwSwap = true;
+    }
+    if (bwSwap)
+        std::swap(wPieces, bPieces);
+    hasPawn = wPieces[4] + bPieces[4] > 0;
+    bwSymmetric = wPieces == bPieces;
+    assert(!(bwSwap && bwSymmetric));
+
     int np = 16;
     wFactors[4] = binCoeff(64 - np, wPieces[4]);
     computeCombInverse(64 - np, wPieces[4], wCombInv[4]);
@@ -57,24 +74,6 @@ PosIndex::PosIndex(const Position& pos) {
         computeCombInverse(64 - np, bPieces[i], bCombInv[i]);
         np += bPieces[i];
     }
-
-    bwSwap = false;
-    int nWPieces = wPieces[0] + wPieces[1] + wPieces[2] + wPieces[3] + wPieces[4];
-    int nBPieces = bPieces[0] + bPieces[1] + bPieces[2] + bPieces[3] + bPieces[4];
-    assert(nWPieces + nBPieces + 2 <= maxPieces);
-    if (nWPieces < nBPieces) {
-        bwSwap = true;
-    } else if (nWPieces == nBPieces) {
-        if (std::lexicographical_compare(wPieces.begin(), wPieces.end(),
-                                         bPieces.begin(), bPieces.end()))
-            bwSwap = true;
-    }
-
-    if (bwSwap)
-        std::swap(wPieces, bPieces);
-    hasPawn = wPieces[4] + bPieces[4] > 0;
-    bwSymmetric = wPieces == bPieces;
-    assert(!(bwSwap && bwSymmetric));
 
     sideFactor = bwSymmetric ? 1 : 2;
     kingFactor = hasPawn ? nKingPawn : nKingNoPawn;
