@@ -153,7 +153,8 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
                     if (it2->indices.empty() || it2->freq >= ce.freq)
                         break;
                     cacheSize -= it2->indices.size();
-                    pairCands.get<Cache>().modify(it2, [](PairCand& pc){ pc.indices.clear(); });
+                    pairCands.get<Cache>().modify(it2, [](PairCand& pc){ pc.indices.clear();
+                                                                         pc.indices.shrink_to_fit(); });
                 }
                 if (cacheSize + newCacheSize + ce.freq > maxCache)
                     break;
