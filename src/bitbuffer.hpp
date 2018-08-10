@@ -37,7 +37,7 @@ private:
 class BitBufferReader {
 public:
     /** Constructor. */
-    BitBufferReader(const U8* buf);
+    explicit BitBufferReader(const U8* buf);
 
     /** Return the next "nBits" bits.
      *  The bits are read in big-endian order.

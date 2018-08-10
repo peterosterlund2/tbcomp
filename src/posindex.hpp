@@ -9,7 +9,7 @@ class Position;
 class PosIndex {
 public:
     /** Constructor. */
-    PosIndex(const Position& pos);
+    explicit PosIndex(const Position& pos);
 
     /** Return total number of positions in this tablebase class. */
     U64 tbSize() const;
@@ -64,7 +64,7 @@ const int nKingNoPawn = 1*(36-3) + 3*(36-6) + 3*(64-6) + 3*(64-9);
 class KingIndex {
 public:
     /** Constructor. */
-    KingIndex(bool hasPawn);
+    explicit KingIndex(bool hasPawn);
 
     U64 index(int wKing, int bKing) const;
 

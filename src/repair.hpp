@@ -71,7 +71,7 @@ private:
 class RePairDeComp {
 public:
     /** Constructor. "inData" must live longer than this object. */
-    RePairDeComp(const U8* inData);
+    explicit RePairDeComp(const U8* inData);
 
     /** Decompress all data. */
     void deCompressAll(std::vector<U8>& outData);
