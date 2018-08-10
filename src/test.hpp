@@ -9,12 +9,17 @@ public:
     void runTests();
 
 private:
+    // BitBuffer
     void testReadWriteBits();
     void testReadWriteU64();
 
+    // Huffman
     void encodeDecode(const std::vector<int>& in);
     void testEncodeDecode();
     void testFibFreq();
+
+    // PosIndex
+    void testSwapColors();
 };
 
 

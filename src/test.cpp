@@ -1,6 +1,8 @@
 #include "test.hpp"
 #include "huffman.hpp"
 #include "tbutil.hpp"
+#include "textio.hpp"
+#include "posindex.hpp"
 #include <utility>
 #include <algorithm>
 #include <iostream>
@@ -13,6 +15,7 @@ Test::runTests() {
     testReadWriteU64();
     testEncodeDecode();
     testFibFreq();
+    testSwapColors();
 }
 
 void
@@ -157,4 +160,22 @@ Test::testFibFreq() {
     assert(data.size() == data2.size());
     for (int i = 0; i < N; i++)
         assert(data[i] == data2[i]);
+}
+
+void
+Test::testSwapColors() {
+    Position pos1;
+    {
+        Position posType = TextIO::readFEN("krr/8/8/8/8/8/8/KQ w");
+        PosIndex pi(posType);
+        pi.index2Pos(1000, pos1);
+    }
+
+    Position pos2;
+    {
+        Position posType = TextIO::readFEN("KRR/8/8/8/8/8/8/kq w");
+        PosIndex pi(posType);
+        pi.index2Pos(1000, pos2);
+    }
+    assert(pos1 == pos2);
 }
