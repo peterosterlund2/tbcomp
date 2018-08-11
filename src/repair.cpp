@@ -94,7 +94,7 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
     PairCandSet pairCands;
     const size_t maxCands = std::max(128*1024, 16*maxSyms); // Heuristic limit
 
-    const U64 maxCache = std::max(U64(32*1024*1024), data.size() / 1024);
+    const U64 maxCache = std::max(U64(64*1024*1024), data.size() / 512);
     S64 cacheSize = 0; // Sum of indices.size() for all PairCand
     // Delta frequencies when transforming AXYB -> AZB
     std::vector<S64> deltaFreqAZ, deltaFreqZB;
@@ -137,6 +137,17 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
         }
     }
 
+    auto pruneCache = [&pairCands,&cacheSize](S64 maxSize, U64 maxFreq) {
+        while (cacheSize > maxSize) {
+            auto it2 = --pairCands.get<Cache>().end();
+            if (it2->indices.empty() || it2->freq >= maxFreq)
+                break;
+            cacheSize -= it2->indices.size();
+            pairCands.get<Cache>().modify(it2, [](PairCand& pc){ pc.indices.clear();
+                                                                 pc.indices.shrink_to_fit(); });
+        }
+    };
+
     while (!pairCands.empty()) {
         if ((int)symbols.size() >= maxSyms)
             break;
@@ -149,14 +160,7 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
             for (const auto& ce : pairCands.get<Cache>()) {
                 if (!ce.indices.empty())
                     break;
-                while (cacheSize + newCacheSize + ce.freq > maxCache) {
-                    auto it2 = pairCands.get<Cache>().end(); --it2;
-                    if (it2->indices.empty() || it2->freq >= ce.freq)
-                        break;
-                    cacheSize -= it2->indices.size();
-                    pairCands.get<Cache>().modify(it2, [](PairCand& pc){ pc.indices.clear();
-                                                                         pc.indices.shrink_to_fit(); });
-                }
+                pruneCache(maxCache - newCacheSize - ce.freq, ce.freq);
                 if (cacheSize + newCacheSize + ce.freq > maxCache)
                     break;
                 U32 xy = (ce.p1 << 16) | ce.p2;
@@ -289,6 +293,7 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
                 }
             }
         }
+        pruneCache(maxCache, comprSize);
         for (int i = 0; i < nSym; i++) {
             for (int k = 0; k < 2; k++) {
                 U16 p1 = (k == 0) ? i : Y;
