@@ -309,8 +309,8 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
             }
         }
         comprSize -= nRepl;
-        std::cout << "nRepl:" << nRepl << " nAdded:" << nAdded << " nRemoved:" << nRemoved
-                  << " nCand:" << pairCands.size() << " cache:" << cacheSize
+        std::cout << "repl:" << nRepl << " add:" << nAdded << " remove:" << nRemoved
+                  << " cand:" << pairCands.size() << " cache:" << cacheSize
                   << " compr:" << comprSize << std::endl;
 
         int pruneFreq = -1;
