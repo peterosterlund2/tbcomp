@@ -92,6 +92,7 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
         >
     >;
     PairCandSet pairCands;
+    const size_t maxCands = std::max(128*1024, 16*maxSyms); // Heuristic limit
 
     const U64 maxCache = std::max(U64(32*1024*1024), data.size() / 1024);
     S64 cacheSize = 0; // Sum of indices.size() for all PairCand
@@ -312,11 +313,15 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
                   << " nCand:" << pairCands.size() << " cache:" << cacheSize
                   << " compr:" << comprSize << std::endl;
 
-        while (pairCands.size() > 32*1024*1024) {
+        int pruneFreq = -1;
+        while (pairCands.size() > maxCands) {
             auto it2 = --pairCands.get<Freq>().end();
             cacheSize -= it2->indices.size();
+            pruneFreq = (int)it2->freq;
             pairCands.get<Freq>().erase(it2);
         }
+        if (pruneFreq != -1)
+            std::cout << "candidate prune, freq:" << pruneFreq << std::endl;
     }
 }
 
