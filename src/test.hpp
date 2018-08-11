@@ -18,6 +18,9 @@ private:
     void testEncodeDecode();
     void testFibFreq();
 
+    // Re-pair
+    void testLookupTable();
+
     // PosIndex
     void testSwapColors();
 };

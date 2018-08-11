@@ -6,7 +6,6 @@
 #include <boost/multi_index/composite_key.hpp>
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/mem_fun.hpp>
-#include <unordered_map>
 #include <cassert>
 #include <iostream>
 
@@ -169,15 +168,16 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
                 minCacheFreq = std::min(minCacheFreq, ce.freq);
             }
             std::cout << "refill cache: nElem:" << cache.size() << " minFreq:" << minCacheFreq << std::endl;
+            LookupTable lut(cache);
             {
                 U64 idx = 0;
                 U64 idxX = idx; int x = getNextSymbol(idx);
                 U64 idxY = idx; int y = getNextSymbol(idx);
                 while (y != -1) {
                     U32 key = (((U16)x) << 16) | (U16)y;
-                    auto it = cache.find(key);
-                    if (it != cache.end())
-                        it->second.push_back(idxX);
+                    std::vector<U64>* vec = lut.lookup(key);
+                    if (vec)
+                        vec->push_back(idxX);
                     idxX = idxY; x = y;
                     idxY = idx;  y = getNextSymbol(idx);
                 }
@@ -330,7 +330,6 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
     }
 }
 
-
 void RePairDeComp::deCompressAll(std::vector<U8>& outData) {
     BitBufferReader br(data);
     const int symTableSize = br.readBits(16);
@@ -371,3 +370,40 @@ void RePairDeComp::deCompressAll(std::vector<U8>& outData) {
         }
     }
 }
+
+// ------------------------------------------------------------
+
+LookupTable::LookupTable(std::unordered_map<U32,std::vector<U64>>& data) {
+    int n = data.size();
+    int nBits = 1;
+    while (n > 0) {
+        nBits++;
+        n /= 2;
+    }
+    n = 1 << nBits;
+    table.resize(n);
+    mask = n - 1;
+
+    for (auto& e : data) {
+        U32 h = hashVal(e.first) & mask;
+        while (!table[h].empty)
+            h = (h + 1) & mask;
+        table[h].key = e.first;
+        table[h].empty = false;
+        table[h].value = &e.second;
+    }
+}
+
+std::vector<U64>* LookupTable::lookup(U32 key) const {
+    U32 h = hashVal(key) & mask;
+    while (true) {
+        const Entry& e = table[h];
+        if (e.empty)
+            break;
+        if (e.key == key)
+            return e.value;
+        h = (h + 1) & mask;
+    }
+    return nullptr;
+}
+

@@ -1,5 +1,6 @@
 #include "test.hpp"
 #include "huffman.hpp"
+#include "repair.hpp"
 #include "tbutil.hpp"
 #include "textio.hpp"
 #include "posindex.hpp"
@@ -15,6 +16,7 @@ Test::runTests() {
     testReadWriteU64();
     testEncodeDecode();
     testFibFreq();
+    testLookupTable();
     testSwapColors();
 }
 
@@ -160,6 +162,31 @@ Test::testFibFreq() {
     assert(data.size() == data2.size());
     for (int i = 0; i < N; i++)
         assert(data[i] == data2[i]);
+}
+
+void
+Test::testLookupTable() {
+    std::unordered_map<U32, std::vector<U64>> cache;
+    cache.insert(std::make_pair(17, std::vector<U64>()));
+    cache.insert(std::make_pair(132, std::vector<U64>{1,2,3}));
+    LookupTable lut(cache);
+    std::vector<U64>* vec = lut.lookup(18);
+    assert(!vec);
+    vec = lut.lookup(17);
+    assert(vec);
+    vec->push_back(111);
+    assert(cache.find(17)->second.size() == 1);
+    assert(cache.find(17)->second[0] == 111);
+    vec = lut.lookup(132);
+    assert(vec);
+    vec->push_back(12);
+    assert(cache.find(132)->second.size() == 4);
+    assert(cache.find(132)->second[0] == 1);
+    assert(cache.find(132)->second[1] == 2);
+    assert(cache.find(132)->second[2] == 3);
+    assert(cache.find(132)->second[3] == 12);
+    vec = lut.lookup(1);
+    assert(!vec);
 }
 
 void

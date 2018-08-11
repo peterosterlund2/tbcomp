@@ -2,6 +2,7 @@
 #define REPAIR_HPP_
 
 #include "bitbuffer.hpp"
+#include <unordered_map>
 
 
 /** A recursively defined symbol used in the re-pair compression algorithm.
@@ -83,6 +84,30 @@ private:
     const U8* data;
 };
 
+/** Fast mapping from integer to cache data. */
+class LookupTable {
+public:
+    /** Constructor */
+    explicit LookupTable(std::unordered_map<U32,std::vector<U64>>& data);
+
+    /** Return data corresponding to key, or nullptr if not found. */
+    std::vector<U64>* lookup(U32 key) const;
+
+private:
+    U32 hashVal(U32 key) const {
+        key *= 2654435789UL;
+        key = key ^ (key >> 19);
+        return key;
+    }
+
+    struct Entry {
+        U32 key = 0;
+        bool empty = true;
+        std::vector<U64>* value = nullptr;
+    };
+    std::vector<Entry> table;
+    U32 mask;
+};
 
 inline void RePairSymbol::setPrimitive(U16 sym) {
     left = INV;
