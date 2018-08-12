@@ -165,11 +165,10 @@ inline void RePairComp::setUsedIdx(U64 idx, bool val) {
 inline int
 RePairComp::getData(U64 idx) const {
     if (getUsedIdx(idx)) {
-        if ((idx+1 < data.size()) && !getUsedIdx(idx+1)) {
-            return data[idx] + 256 * data[idx + 1];
-        } else {
-            return data[idx];
-        }
+        int ret = data[idx];
+        if (!getUsedIdx(idx+1))
+            ret += 256 * data[idx + 1];
+        return ret;
     }
     return -1;
 }

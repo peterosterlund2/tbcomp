@@ -12,7 +12,7 @@
 
 RePairComp::RePairComp(std::vector<U8>& inData, int minFreq, int maxSyms)
     : data(inData) {
-    usedIdx.assign((inData.size() + 63) / 64, ~(0ULL));
+    usedIdx.assign((inData.size()+1 + 63) / 64, ~(0ULL));
     compress((U64)minFreq, maxSyms);
 }
 
