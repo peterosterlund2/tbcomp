@@ -90,7 +90,9 @@ PosIndex::tbSize() const {
 static Position swapColors(const Position& pos) {
     Position sym;
     sym.setWhiteMove(!pos.isWhiteMove());
-    for (int sq = 0; sq < 64; sq++) {
+    U64 occupied = pos.occupiedBB();
+    while (occupied) {
+        int sq = BitBoard::extractSquare(occupied);
         int p = pos.getPiece(sq);
         p = Piece::isWhite(p) ? Piece::makeBlack(p) : Piece::makeWhite(p);
         sym.setPiece(Square::mirrorY(sq), p);

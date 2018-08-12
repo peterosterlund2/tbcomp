@@ -215,7 +215,6 @@ Test::testSwapColors() {
         Position pos2 = TextIO::readFEN("kq/8/8/8/8/8/8/KRR b");
         U64 idx1 = pi.pos2Index(pos1);
         U64 idx2 = pi.pos2Index(pos2);
-        std::cout << "idx1:" << idx1 << " idx2:" << idx2 << std::endl;
         assert(idx1 == idx2);
     }
 }
