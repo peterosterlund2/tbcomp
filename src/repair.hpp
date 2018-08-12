@@ -180,7 +180,7 @@ RePairComp::getNextSymbol(U64& idx) const {
     int ret = getData(idx);
     idx += symbols[ret].getLength();
     return ret;
-};
+}
 
 inline RePairDeComp::RePairDeComp(const U8* inData)
     : data(inData) {
