@@ -16,7 +16,8 @@ RePairComp::RePairComp(std::vector<U8>& inData, int minFreq, int maxSyms)
     compress((U64)minFreq, maxSyms);
 }
 
-void RePairComp::toBitBuf(BitBufferWriter& out) {
+void
+RePairComp::toBitBuf(BitBufferWriter& out) {
     const int symTableSize = symbols.size();
 
     // Write symbol table
@@ -330,7 +331,8 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
     }
 }
 
-void RePairDeComp::deCompressAll(std::vector<U8>& outData) {
+void
+RePairDeComp::deCompressAll(std::function<void(const std::vector<U8>&)> consumer) {
     BitBufferReader br(data);
     const int symTableSize = br.readBits(16);
     std::vector<RePairSymbol> symbols(symTableSize);
@@ -349,6 +351,10 @@ void RePairDeComp::deCompressAll(std::vector<U8>& outData) {
         symbols[i].setLengthDepth(len, d);
     }
 
+    const int bufSize = 1024*1024;
+    std::vector<U8> outData;
+    outData.reserve(bufSize);
+
     HuffCode code;
     code.fromBitBuf(br);
     const U64 nSyms = br.readU64();
@@ -359,6 +365,10 @@ void RePairDeComp::deCompressAll(std::vector<U8>& outData) {
             const RePairSymbol& s = symbols[sym];
             if (s.isPrimitive()) {
                 outData.push_back(s.getValue());
+                if (outData.size() >= bufSize) {
+                    consumer(outData);
+                    outData.clear();
+                }
                 if (stack.empty())
                     break;
                 sym = stack.back();
@@ -369,6 +379,7 @@ void RePairDeComp::deCompressAll(std::vector<U8>& outData) {
             }
         }
     }
+    consumer(outData);
 }
 
 // ------------------------------------------------------------
@@ -394,7 +405,8 @@ LookupTable::LookupTable(std::unordered_map<U32,std::vector<U64>>& data) {
     }
 }
 
-std::vector<U64>* LookupTable::lookup(U32 key) const {
+std::vector<U64>*
+LookupTable::lookup(U32 key) const {
     U32 h = hashVal(key) & mask;
     while (true) {
         const Entry& e = table[h];
@@ -406,4 +418,3 @@ std::vector<U64>* LookupTable::lookup(U32 key) const {
     }
     return nullptr;
 }
-

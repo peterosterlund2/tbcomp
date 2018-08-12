@@ -235,13 +235,12 @@ int main(int argc, char* argv[]) {
             std::vector<U8> inData;
             readFile(inF, inData);
 
-            std::cout << "Decoding..." << std::endl;
+            std::cout << "Decoding/writing..." << std::endl;
             RePairDeComp deComp(&inData[0]);
-            std::vector<U8> outData;
-            deComp.deCompressAll(outData);
-
-            std::cout << "Writing..." << std::endl;
-            outF.write((const char*)&outData[0], outData.size());
+            auto writer = [&outF](const std::vector<U8>& outData) {
+                outF.write((const char*)&outData[0], outData.size());
+            };
+            deComp.deCompressAll(writer);
 
         } else if (cmd == "idx2pos") {
             if (argc < 12 || argc > 13)
@@ -445,4 +444,3 @@ static void wdlDump(const std::string& tbType) {
     std::ofstream outF("out.bin");
     outF.write((const char*)data.data(), data.size());
 }
-

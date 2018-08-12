@@ -75,7 +75,7 @@ public:
     explicit RePairDeComp(const U8* inData);
 
     /** Decompress all data. */
-    void deCompressAll(std::vector<U8>& outData);
+    void deCompressAll(std::function<void(const std::vector<U8>&)> consumer);
 
     /** Decompress one data entry. */
     int operator[](U64 idx) const;
