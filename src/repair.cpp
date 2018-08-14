@@ -54,8 +54,7 @@ RePairComp::toBitBuf(BitBufferWriter& out) {
     }
 }
 
-void
-RePairComp::compress(U64 minFreq, int maxSyms) {
+namespace RePairImpl {
     using namespace boost;
     using namespace boost::multi_index;
 
@@ -91,109 +90,145 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
             >
         >
     >;
-    PairCandSet pairCands;
+
+    struct CompressData {
+        explicit CompressData(U64 minF) : minFreq(minF) {}
+        PairCandSet pairCands;
+        const U64 minFreq;
+        S64 cacheSize = 0; // Sum of indices.size() for all PairCands
+    };
+}
+
+void
+RePairComp::initSymbols(RePairImpl::CompressData& cpData) {
+    using namespace RePairImpl;
+    PairCandSet& pairCands = cpData.pairCands;
+
+    const U64 minFreq = cpData.minFreq;
+    const U64 dataLen = data.size();
+
+    // Create primitive symbols
+    int primitiveSyms[256];
+    for (int i = 0; i < 256; i++)
+        primitiveSyms[i] = 0;
+    for (U64 i = 0; i < dataLen; i++)
+        primitiveSyms[data[i]] = 1;
+    for (int i = 0; i < 256; i++) {
+        if (primitiveSyms[i]) {
+            RePairSymbol s;
+            s.setPrimitive(i);
+            primitiveSyms[i] = symbols.size();
+            symbols.push_back(s);
+            std::cout << "sym:" << primitiveSyms[i] << " val:" << i << std::endl;
+        }
+    }
+    for (U64 i = 0; i < dataLen; i++)
+        data[i] = primitiveSyms[data[i]];
+
+    // Create initial pair candidates
+    U64 initialFreq[256][256];
+    for (int i = 0; i < 256; i++)
+        for (int j = 0; j < 256; j++)
+            initialFreq[i][j] = 0;
+    for (U64 i = 1; i < dataLen; i++)
+        initialFreq[data[i-1]][data[i]]++;
+    for (int i = 0; i < 256; i++) {
+        for (int j = 0; j < 256; j++) {
+            U64 f = initialFreq[i][j];
+            if (f >= minFreq)
+                pairCands.insert(PairCand{(U16)i,(U16)j,2,f});
+        }
+    }
+}
+
+void
+RePairComp::pruneCache(RePairImpl::CompressData& cpData, S64 maxSize, U64 maxFreq) const {
+    using namespace RePairImpl;
+    PairCandSet& pairCands = cpData.pairCands;
+    S64& cacheSize = cpData.cacheSize;
+
+    while (cacheSize > maxSize) {
+        auto it2 = --pairCands.get<Cache>().end();
+        if (it2->indices.empty() || it2->freq >= maxFreq)
+            break;
+        cacheSize -= it2->indices.size();
+        pairCands.get<Cache>().modify(it2, [](PairCand& pc){ pc.indices.clear();
+                                                             pc.indices.shrink_to_fit(); });
+    }
+}
+
+void
+RePairComp::refillCache(RePairImpl::CompressData& cpData, U64 maxCache) {
+    using namespace RePairImpl;
+    PairCandSet& pairCands = cpData.pairCands;
+    S64& cacheSize = cpData.cacheSize;
+
+    std::unordered_map<U32, std::vector<U64>> cache;
+    S64 newCacheSize = 0;
+    U64 minCacheFreq = maxCache;
+    for (const auto& ce : pairCands.get<Cache>()) {
+        if (!ce.indices.empty())
+            break;
+        pruneCache(cpData, maxCache - newCacheSize - ce.freq, ce.freq);
+        if (cacheSize + newCacheSize + ce.freq > maxCache)
+            break;
+        U32 xy = (ce.p1 << 16) | ce.p2;
+        cache.insert(std::make_pair(xy, std::vector<U64>()));
+        newCacheSize += ce.freq;
+        minCacheFreq = std::min(minCacheFreq, ce.freq);
+    }
+    std::cout << "refill cache: nElem:" << cache.size() << " minFreq:" << minCacheFreq << std::endl;
+    LookupTable lut(cache);
+    {
+        U64 idx = 0;
+        U64 idxX = idx; int x = getNextSymbol(idx);
+        U64 idxY = idx; int y = getNextSymbol(idx);
+        while (y != -1) {
+            U32 key = (((U16)x) << 16) | (U16)y;
+            std::vector<U64>* vec = lut.lookup(key);
+            if (vec)
+                vec->push_back(idxX);
+            idxX = idxY; x = y;
+            idxY = idx;  y = getNextSymbol(idx);
+        }
+    }
+    for (auto& e : cache) {
+        U32 xy = e.first;
+        U16 x = (U16)(xy >> 16);
+        U16 y = (U16)(xy & 0xffff);
+        std::vector<U64>& vec = e.second;
+        auto it2 = pairCands.get<Pair>().find(std::make_tuple(x,y));
+        cacheSize += vec.size();
+        pairCands.get<Pair>().modify(it2, [&vec](PairCand& pc) { pc.indices = std::move(vec); });
+    }
+    std::cout << "refill cache: nElem:" << cache.size() << " cacheSize:" << cacheSize << std::endl;
+}
+
+void
+RePairComp::compress(U64 minFreq, int maxSyms) {
+    using namespace RePairImpl;
+    CompressData cpData(minFreq);
+    PairCandSet& pairCands = cpData.pairCands;
+    S64& cacheSize = cpData.cacheSize;
+
     const size_t maxCands = std::max(128*1024, 16*maxSyms); // Heuristic limit
 
     const U64 maxCache = std::max(U64(64*1024*1024), data.size() / 512);
-    S64 cacheSize = 0; // Sum of indices.size() for all PairCand
     // Delta frequencies when transforming AXYB -> AZB
     std::vector<S64> deltaFreqAZ, deltaFreqZB;
     std::vector<S64> deltaFreqAX, deltaFreqYB;
     std::vector<std::vector<U64>> vecAZ, vecZB;
 
-    const U64 dataLen = data.size();
-    U64 comprSize = dataLen;
-    {
-        int primitiveSyms[256];
-        for (int i = 0; i < 256; i++)
-            primitiveSyms[i] = 0;
-        for (U64 i = 0; i < dataLen; i++)
-            primitiveSyms[data[i]] = 1;
-        for (int i = 0; i < 256; i++) {
-            if (primitiveSyms[i]) {
-                RePairSymbol s;
-                s.setPrimitive(i);
-                primitiveSyms[i] = symbols.size();
-                symbols.push_back(s);
-                std::cout << "sym:" << primitiveSyms[i] << " val:" << i << std::endl;
-            }
-        }
-        for (U64 i = 0; i < dataLen; i++)
-            data[i] = primitiveSyms[data[i]];
-    }
-    {
-        U64 initialFreq[256][256];
-        for (int i = 0; i < 256; i++)
-            for (int j = 0; j < 256; j++)
-                initialFreq[i][j] = 0;
-        for (U64 i = 1; i < dataLen; i++)
-            initialFreq[data[i-1]][data[i]]++;
-        for (int i = 0; i < 256; i++) {
-            for (int j = 0; j < 256; j++) {
-                U64 f = initialFreq[i][j];
-                if (f >= minFreq)
-                    pairCands.insert(PairCand{(U16)i,(U16)j,2,f});
-            }
-        }
-    }
-
-    auto pruneCache = [&pairCands,&cacheSize](S64 maxSize, U64 maxFreq) {
-        while (cacheSize > maxSize) {
-            auto it2 = --pairCands.get<Cache>().end();
-            if (it2->indices.empty() || it2->freq >= maxFreq)
-                break;
-            cacheSize -= it2->indices.size();
-            pairCands.get<Cache>().modify(it2, [](PairCand& pc){ pc.indices.clear();
-                                                                 pc.indices.shrink_to_fit(); });
-        }
-    };
+    U64 comprSize = data.size();
+    initSymbols(cpData);
 
     while (!pairCands.empty()) {
         if ((int)symbols.size() >= maxSyms)
             break;
         auto it = pairCands.get<Freq>().begin();
         assert(cacheSize >= 0);
-        if (it->indices.empty() && it->freq * 8 <= maxCache) { // Refill cache
-            std::unordered_map<U32, std::vector<U64>> cache;
-            S64 newCacheSize = 0;
-            U64 minCacheFreq = maxCache;
-            for (const auto& ce : pairCands.get<Cache>()) {
-                if (!ce.indices.empty())
-                    break;
-                pruneCache(maxCache - newCacheSize - ce.freq, ce.freq);
-                if (cacheSize + newCacheSize + ce.freq > maxCache)
-                    break;
-                U32 xy = (ce.p1 << 16) | ce.p2;
-                cache.insert(std::make_pair(xy, std::vector<U64>()));
-                newCacheSize += ce.freq;
-                minCacheFreq = std::min(minCacheFreq, ce.freq);
-            }
-            std::cout << "refill cache: nElem:" << cache.size() << " minFreq:" << minCacheFreq << std::endl;
-            LookupTable lut(cache);
-            {
-                U64 idx = 0;
-                U64 idxX = idx; int x = getNextSymbol(idx);
-                U64 idxY = idx; int y = getNextSymbol(idx);
-                while (y != -1) {
-                    U32 key = (((U16)x) << 16) | (U16)y;
-                    std::vector<U64>* vec = lut.lookup(key);
-                    if (vec)
-                        vec->push_back(idxX);
-                    idxX = idxY; x = y;
-                    idxY = idx;  y = getNextSymbol(idx);
-                }
-            }
-            for (auto& e : cache) {
-                U32 xy = e.first;
-                U16 x = (U16)(xy >> 16);
-                U16 y = (U16)(xy & 0xffff);
-                std::vector<U64>& vec = e.second;
-                auto it2 = pairCands.get<Pair>().find(std::make_tuple(x,y));
-                cacheSize += vec.size();
-                pairCands.get<Pair>().modify(it2, [&vec](PairCand& pc) { pc.indices = std::move(vec); });
-            }
-            std::cout << "refill cache: nElem:" << cache.size() << " cacheSize:" << cacheSize << std::endl;
-        }
+        if (it->indices.empty() && it->freq * 8 <= maxCache)
+            refillCache(cpData, maxCache);
 
         const U16 X = it->p1;
         const U16 Y = it->p2;
@@ -294,17 +329,17 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
                 }
             }
         }
-        pruneCache(maxCache, comprSize);
+        pruneCache(cpData, maxCache, comprSize);
         for (int i = 0; i < nSym; i++) {
             for (int k = 0; k < 2; k++) {
                 U16 p1 = (k == 0) ? i : Y;
                 U16 p2 = (k == 0) ? X : i;
-                S64 d  = (k == 0) ? -deltaFreqAX[i] : -deltaFreqYB[i];
+                S64 d  = (k == 0) ? deltaFreqAX[i] : deltaFreqYB[i];
                 if (d != 0) {
                     ((k == 0) ? deltaFreqAX[i] : deltaFreqYB[i]) = 0;
                     auto it2 = pairCands.get<Pair>().find(std::make_tuple(p1,p2));
                     if (it2 != pairCands.get<Pair>().end()) {
-                        pairCands.get<Pair>().modify(it2, [d](PairCand& pc) { pc.freq -= d; });
+                        pairCands.get<Pair>().modify(it2, [d](PairCand& pc) { pc.freq += d; });
                         if (it2->freq < minFreq) {
                             cacheSize -= it2->indices.size();
                             pairCands.get<Pair>().erase(it2);

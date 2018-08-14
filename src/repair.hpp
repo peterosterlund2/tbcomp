@@ -4,6 +4,9 @@
 #include "bitbuffer.hpp"
 #include <unordered_map>
 
+namespace RePairImpl {
+    struct CompressData;
+}
 
 /** A recursively defined symbol used in the re-pair compression algorithm.
  * A symbol can be primitive, in which case it represents a single byte in
@@ -48,6 +51,9 @@ public:
 
 private:
     void compress(U64 minFreq, int maxSyms);
+    void initSymbols(RePairImpl::CompressData& cpData);
+    void pruneCache(RePairImpl::CompressData& cpData, S64 maxSize, U64 maxFreq) const;
+    void refillCache(RePairImpl::CompressData& cpData, U64 maxCache);
 
     bool getUsedIdx(U64 idx) const;
     void setUsedIdx(U64 idx, bool val);
