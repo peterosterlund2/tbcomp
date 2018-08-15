@@ -189,7 +189,8 @@ RePairComp::getNextSymbol(U64& idx) const {
     if (idx >= data.size())
         return -1;
     int ret = getData(idx);
-    idx += symbols[ret].getLength();
+    while (++idx < data.size() && !getUsedIdx(idx))
+        ;
     return ret;
 }
 

@@ -31,12 +31,12 @@ RePairComp::toBitBuf(BitBufferWriter& out) {
     std::vector<U64> freq(symTableSize);
     U64 nSyms = 0;
     U64 i = 0;
-    while (i < data.size()) {
-        int sym = getData(i);
-        assert(sym != -1);
+    while (true) {
+        int sym = getNextSymbol(i);
+        if (sym == -1)
+            break;
         freq[sym]++;
         nSyms++;
-        i += symbols[sym].getLength();
     }
 
     // Huffman encode symbols
@@ -46,11 +46,11 @@ RePairComp::toBitBuf(BitBufferWriter& out) {
     code.toBitBuf(out, true);
     out.writeU64(nSyms);
     i = 0;
-    while (i < data.size()) {
-        int sym = getData(i);
-        assert(sym != -1);
+    while (true) {
+        int sym = getNextSymbol(i);
+        if (sym == -1)
+            break;
         code.encodeSymbol(sym, out);
-        i += symbols[sym].getLength();
     }
 }
 
@@ -333,11 +333,22 @@ RePairComp::replacePairs(const std::vector<U64>& indices, int X, int Y, int Z,
 
     U64 nRepl = 0;
     if (indices.empty()) {
+        U64 outIdx = 0;
         U64 idx = 0;
         int a = -1;
-        U64 idxX = idx; int x = getNextSymbol(idx);
-        U64 idxY = idx; int y = getNextSymbol(idx);
-        U64 idxB = idx; int b = getNextSymbol(idx);
+        int x = getNextSymbol(idx);
+        int y = getNextSymbol(idx);
+        int b = getNextSymbol(idx);
+
+        auto output = [this,&outIdx](int val) {
+            data[outIdx] = (U8)(val & 0xff);
+            setUsedIdx(outIdx++, true);
+            if (val >= 256) {
+                data[outIdx] = (U8)(val >> 8);
+                setUsedIdx(outIdx++, false);
+            }
+        };
+
         while (y != -1) {
             if (x == X && y == Y) { // Transform AXYB -> AZB
                 if (a != -1) {
@@ -348,22 +359,23 @@ RePairComp::replacePairs(const std::vector<U64>& indices, int X, int Y, int Z,
                     deltaFreqZB[b]++;
                     deltaFreqYB[b]--;
                 }
-                data[idxX] = (U8)(Z & 0xff);
-                data[idxX+1] = (U8)(Z >> 8);
-                setUsedIdx(idxY, false);
-
-                             a = Z;
-                idxX = idxB; x = b;
-                idxY = idx;  y = getNextSymbol(idx);
-                idxB = idx;  b = getNextSymbol(idx);
+                output(Z);
+                a = Z;
+                x = b;
+                y = getNextSymbol(idx);
+                b = getNextSymbol(idx);
                 nRepl++;
             } else {
-                             a = x;
-                idxX = idxY; x = y;
-                idxY = idxB; y = b;
-                idxB = idx;  b = getNextSymbol(idx);
+                output(x);
+                a = x;
+                x = y;
+                y = b;
+                b = getNextSymbol(idx);
             }
         }
+        if (x != -1)
+            output(x);
+        data.resize(outIdx);
     } else {
         for (U64 idxX : indices) {
             U64 idx = idxX; int x = getNextSymbol(idx); if (x != X) continue;
