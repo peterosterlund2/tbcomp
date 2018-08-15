@@ -6,6 +6,7 @@
 
 namespace RePairImpl {
     struct CompressData;
+    struct DeltaFreq;
 }
 
 /** A recursively defined symbol used in the re-pair compression algorithm.
@@ -54,6 +55,8 @@ private:
     void initSymbols(RePairImpl::CompressData& cpData);
     void pruneCache(RePairImpl::CompressData& cpData, S64 maxSize, U64 maxFreq) const;
     void refillCache(RePairImpl::CompressData& cpData, U64 maxCache);
+    U64 replacePairs(const std::vector<U64>& indices, int X, int Y, int Z,
+                     RePairImpl::DeltaFreq& delta);
 
     bool getUsedIdx(U64 idx) const;
     void setUsedIdx(U64 idx, bool val);

@@ -97,6 +97,19 @@ namespace RePairImpl {
         const U64 minFreq;
         S64 cacheSize = 0; // Sum of indices.size() for all PairCands
     };
+
+    struct DeltaFreq {
+        std::vector<S64> deltaFreqAZ, deltaFreqZB;
+        std::vector<S64> deltaFreqAX, deltaFreqYB;
+        std::vector<std::vector<U64>> vecAZ, vecZB;
+
+        void resize(int nSym) {
+            deltaFreqAZ.resize(nSym); vecAZ.resize(nSym);
+            deltaFreqZB.resize(nSym); vecZB.resize(nSym);
+            deltaFreqAX.resize(nSym);
+            deltaFreqYB.resize(nSym);
+        }
+    };
 }
 
 void
@@ -204,6 +217,78 @@ RePairComp::refillCache(RePairImpl::CompressData& cpData, U64 maxCache) {
     std::cout << "refill cache: nElem:" << cache.size() << " cacheSize:" << cacheSize << std::endl;
 }
 
+U64
+RePairComp::replacePairs(const std::vector<U64>& indices, int X, int Y, int Z,
+                         RePairImpl::DeltaFreq& delta) {
+    using namespace RePairImpl;
+
+    std::vector<S64>& deltaFreqAZ = delta.deltaFreqAZ;
+    std::vector<S64>& deltaFreqZB = delta.deltaFreqZB;
+    std::vector<S64>& deltaFreqAX = delta.deltaFreqAX;
+    std::vector<S64>& deltaFreqYB = delta.deltaFreqYB;
+    std::vector<std::vector<U64>>& vecAZ = delta.vecAZ;
+    std::vector<std::vector<U64>>& vecZB = delta.vecZB;
+
+    U64 nRepl = 0;
+    if (indices.empty()) {
+        U64 idx = 0;
+        int a = -1;
+        U64 idxX = idx; int x = getNextSymbol(idx);
+        U64 idxY = idx; int y = getNextSymbol(idx);
+        U64 idxB = idx; int b = getNextSymbol(idx);
+        while (y != -1) {
+            if (x == X && y == Y) { // Transform AXYB -> AZB
+                if (a != -1) {
+                    deltaFreqAZ[a]++;
+                    deltaFreqAX[a]--;
+                }
+                if (b != -1) {
+                    deltaFreqZB[b]++;
+                    deltaFreqYB[b]--;
+                }
+                data[idxX] = (U8)(Z & 0xff);
+                data[idxX+1] = (U8)(Z >> 8);
+                setUsedIdx(idxY, false);
+
+                             a = Z;
+                idxX = idxB; x = b;
+                idxY = idx;  y = getNextSymbol(idx);
+                idxB = idx;  b = getNextSymbol(idx);
+                nRepl++;
+            } else {
+                             a = x;
+                idxX = idxY; x = y;
+                idxY = idxB; y = b;
+                idxB = idx;  b = getNextSymbol(idx);
+            }
+        }
+    } else {
+        for (U64 idxX : indices) {
+            U64 idx = idxX; int x = getNextSymbol(idx); if (x != X) continue;
+            U64 idxY = idx; int y = getNextSymbol(idx); if (y != Y) continue;
+            int b = getNextSymbol(idx);
+            U64 idxA = idxX - 1; int a = -1;
+            if (idxX > 0)
+                while (true)
+                    if (((a = getData(idxA)) != -1) || (idxA-- == 0))
+                        break;
+            if (a != -1) {
+                deltaFreqAZ[a]++; vecAZ[a].push_back(idxA);
+                deltaFreqAX[a]--;
+            }
+            if (b != -1) {
+                deltaFreqZB[b]++; vecZB[b].push_back(idxX);
+                deltaFreqYB[b]--;
+            }
+            data[idxX] = (U8)(Z & 0xff);
+            data[idxX+1] = (U8)(Z >> 8);
+            setUsedIdx(idxY, false);
+            nRepl++;
+        }
+    }
+    return nRepl;
+}
+
 void
 RePairComp::compress(U64 minFreq, int maxSyms) {
     using namespace RePairImpl;
@@ -214,10 +299,9 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
     const size_t maxCands = std::max(128*1024, 16*maxSyms); // Heuristic limit
 
     const U64 maxCache = std::max(U64(64*1024*1024), data.size() / 512);
+
     // Delta frequencies when transforming AXYB -> AZB
-    std::vector<S64> deltaFreqAZ, deltaFreqZB;
-    std::vector<S64> deltaFreqAX, deltaFreqYB;
-    std::vector<std::vector<U64>> vecAZ, vecZB;
+    DeltaFreq delta;
 
     U64 comprSize = data.size();
     initSymbols(cpData);
@@ -243,68 +327,9 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
         std::cout << "XY->Z: " << X << ' ' << Y << ' ' << Z
                   << " len:" << newSym.getLength() << " depth:" << newSym.getDepth() << std::endl;
 
-        deltaFreqAZ.resize(nSym); vecAZ.resize(nSym);
-        deltaFreqZB.resize(nSym); vecZB.resize(nSym);
-        deltaFreqAX.resize(nSym);
-        deltaFreqYB.resize(nSym);
+        delta.resize(nSym);
 
-        U64 nRepl = 0;
-        if (it->indices.empty()) {
-            U64 idx = 0;
-            int a = -1;
-            U64 idxX = idx; int x = getNextSymbol(idx);
-            U64 idxY = idx; int y = getNextSymbol(idx);
-            U64 idxB = idx; int b = getNextSymbol(idx);
-            while (y != -1) {
-                if (x == X && y == Y) { // Transform AXYB -> AZB
-                    if (a != -1) {
-                        deltaFreqAZ[a]++;
-                        deltaFreqAX[a]--;
-                    }
-                    if (b != -1) {
-                        deltaFreqZB[b]++;
-                        deltaFreqYB[b]--;
-                    }
-                    data[idxX] = (U8)(Z & 0xff);
-                    data[idxX+1] = (U8)(Z >> 8);
-                    setUsedIdx(idxY, false);
-
-                                 a = Z;
-                    idxX = idxB; x = b;
-                    idxY = idx;  y = getNextSymbol(idx);
-                    idxB = idx;  b = getNextSymbol(idx);
-                    nRepl++;
-                } else {
-                                 a = x;
-                    idxX = idxY; x = y;
-                    idxY = idxB; y = b;
-                    idxB = idx;  b = getNextSymbol(idx);
-                }
-            }
-        } else {
-            for (U64 idxX : it->indices) {
-                U64 idx = idxX; int x = getNextSymbol(idx); if (x != X) continue;
-                U64 idxY = idx; int y = getNextSymbol(idx); if (y != Y) continue;
-                int b = getNextSymbol(idx);
-                U64 idxA = idxX - 1; int a = -1;
-                if (idxX > 0)
-                    while (true)
-                        if (((a = getData(idxA)) != -1) || (idxA-- == 0))
-                            break;
-                if (a != -1) {
-                    deltaFreqAZ[a]++; vecAZ[a].push_back(idxA);
-                    deltaFreqAX[a]--;
-                }
-                if (b != -1) {
-                    deltaFreqZB[b]++; vecZB[b].push_back(idxX);
-                    deltaFreqYB[b]--;
-                }
-                data[idxX] = (U8)(Z & 0xff);
-                data[idxX+1] = (U8)(Z >> 8);
-                setUsedIdx(idxY, false);
-                nRepl++;
-            }
-        }
+        U64 nRepl = replacePairs(it->indices, X, Y, Z, delta);
 
         int nAdded = 0, nRemoved = 0;
         cacheSize -= it->indices.size();
@@ -313,10 +338,10 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
             for (int k = 0; k < 2; k++) {
                 U16 p1 = (k == 0) ? i : Z;
                 U16 p2 = (k == 0) ? Z : i;
-                U64 f  = (k == 0) ? deltaFreqAZ[i] : deltaFreqZB[i];
+                U64 f  = (k == 0) ? delta.deltaFreqAZ[i] : delta.deltaFreqZB[i];
                 if (f != 0) {
-                    ((k == 0) ? deltaFreqAZ[i] : deltaFreqZB[i]) = 0;
-                    std::vector<U64>& vec = (k == 0) ? vecAZ[i] : vecZB[i];
+                    ((k == 0) ? delta.deltaFreqAZ[i] : delta.deltaFreqZB[i]) = 0;
+                    std::vector<U64>& vec = (k == 0) ? delta.vecAZ[i] : delta.vecZB[i];
                     if (f >= minFreq) {
                         int d = std::max(symbols[i].getDepth(), symbols[Z].getDepth()) + 1;
                         PairCand pc { (U16)p1, (U16)p2, d, f };
@@ -334,9 +359,9 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
             for (int k = 0; k < 2; k++) {
                 U16 p1 = (k == 0) ? i : Y;
                 U16 p2 = (k == 0) ? X : i;
-                S64 d  = (k == 0) ? deltaFreqAX[i] : deltaFreqYB[i];
+                S64 d  = (k == 0) ? delta.deltaFreqAX[i] : delta.deltaFreqYB[i];
                 if (d != 0) {
-                    ((k == 0) ? deltaFreqAX[i] : deltaFreqYB[i]) = 0;
+                    ((k == 0) ? delta.deltaFreqAX[i] : delta.deltaFreqYB[i]) = 0;
                     auto it2 = pairCands.get<Pair>().find(std::make_tuple(p1,p2));
                     if (it2 != pairCands.get<Pair>().end()) {
                         pairCands.get<Pair>().modify(it2, [d](PairCand& pc) { pc.freq += d; });
