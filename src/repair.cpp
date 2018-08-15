@@ -113,6 +113,108 @@ namespace RePairImpl {
 }
 
 void
+RePairComp::compress(U64 minFreq, int maxSyms) {
+    using namespace RePairImpl;
+    CompressData cpData(minFreq);
+    PairCandSet& pairCands = cpData.pairCands;
+    S64& cacheSize = cpData.cacheSize;
+
+    const size_t maxCands = std::max(128*1024, 16*maxSyms); // Heuristic limit
+
+    const U64 maxCache = std::max(U64(64*1024*1024), data.size() / 512);
+
+    // Delta frequencies when transforming AXYB -> AZB
+    DeltaFreq delta;
+
+    U64 comprSize = data.size();
+    initSymbols(cpData);
+
+    while (!pairCands.empty()) {
+        if ((int)symbols.size() >= maxSyms)
+            break;
+        auto it = pairCands.get<Freq>().begin();
+        assert(cacheSize >= 0);
+        if (it->indices.empty() && it->freq * 8 <= maxCache)
+            refillCache(cpData, maxCache);
+
+        const U16 X = it->p1;
+        const U16 Y = it->p2;
+        const U16 Z = (U16)symbols.size();
+        RePairSymbol newSym;
+        newSym.setPair(X, Y);
+        newSym.setLengthDepth(symbols[X].getLength() + symbols[Y].getLength(),
+                              std::max(symbols[X].getDepth(), symbols[Y].getDepth())+1);
+        symbols.push_back(newSym);
+        const int nSym = symbols.size();
+
+        std::cout << "XY->Z: " << X << ' ' << Y << ' ' << Z
+                  << " len:" << newSym.getLength() << " depth:" << newSym.getDepth() << std::endl;
+
+        delta.resize(nSym);
+
+        U64 nRepl = replacePairs(it->indices, X, Y, Z, delta);
+
+        int nAdded = 0, nRemoved = 0;
+        cacheSize -= it->indices.size();
+        pairCands.get<Freq>().erase(it);
+        for (int i = 0; i < nSym; i++) {
+            for (int k = 0; k < 2; k++) {
+                U16 p1 = (k == 0) ? i : Z;
+                U16 p2 = (k == 0) ? Z : i;
+                U64 f  = (k == 0) ? delta.deltaFreqAZ[i] : delta.deltaFreqZB[i];
+                if (f != 0) {
+                    ((k == 0) ? delta.deltaFreqAZ[i] : delta.deltaFreqZB[i]) = 0;
+                    std::vector<U64>& vec = (k == 0) ? delta.vecAZ[i] : delta.vecZB[i];
+                    if (f >= minFreq) {
+                        int d = std::max(symbols[i].getDepth(), symbols[Z].getDepth()) + 1;
+                        PairCand pc { (U16)p1, (U16)p2, d, f };
+                        cacheSize += vec.size();
+                        pc.indices = std::move(vec);
+                        pairCands.insert(std::move(pc));
+                        nAdded++;
+                    }
+                    vec.clear();
+                }
+            }
+        }
+        pruneCache(cpData, maxCache, comprSize);
+        for (int i = 0; i < nSym; i++) {
+            for (int k = 0; k < 2; k++) {
+                U16 p1 = (k == 0) ? i : Y;
+                U16 p2 = (k == 0) ? X : i;
+                S64 d  = (k == 0) ? delta.deltaFreqAX[i] : delta.deltaFreqYB[i];
+                if (d != 0) {
+                    ((k == 0) ? delta.deltaFreqAX[i] : delta.deltaFreqYB[i]) = 0;
+                    auto it2 = pairCands.get<Pair>().find(std::make_tuple(p1,p2));
+                    if (it2 != pairCands.get<Pair>().end()) {
+                        pairCands.get<Pair>().modify(it2, [d](PairCand& pc) { pc.freq += d; });
+                        if (it2->freq < minFreq) {
+                            cacheSize -= it2->indices.size();
+                            pairCands.get<Pair>().erase(it2);
+                            nRemoved++;
+                        }
+                    }
+                }
+            }
+        }
+        comprSize -= nRepl;
+        std::cout << "repl:" << nRepl << " add:" << nAdded << " remove:" << nRemoved
+                  << " cand:" << pairCands.size() << " cache:" << cacheSize
+                  << " compr:" << comprSize << std::endl;
+
+        int pruneFreq = -1;
+        while (pairCands.size() > maxCands) {
+            auto it2 = --pairCands.get<Freq>().end();
+            cacheSize -= it2->indices.size();
+            pruneFreq = (int)it2->freq;
+            pairCands.get<Freq>().erase(it2);
+        }
+        if (pruneFreq != -1)
+            std::cout << "candidate prune, freq:" << pruneFreq << std::endl;
+    }
+}
+
+void
 RePairComp::initSymbols(RePairImpl::CompressData& cpData) {
     using namespace RePairImpl;
     PairCandSet& pairCands = cpData.pairCands;
@@ -287,108 +389,6 @@ RePairComp::replacePairs(const std::vector<U64>& indices, int X, int Y, int Z,
         }
     }
     return nRepl;
-}
-
-void
-RePairComp::compress(U64 minFreq, int maxSyms) {
-    using namespace RePairImpl;
-    CompressData cpData(minFreq);
-    PairCandSet& pairCands = cpData.pairCands;
-    S64& cacheSize = cpData.cacheSize;
-
-    const size_t maxCands = std::max(128*1024, 16*maxSyms); // Heuristic limit
-
-    const U64 maxCache = std::max(U64(64*1024*1024), data.size() / 512);
-
-    // Delta frequencies when transforming AXYB -> AZB
-    DeltaFreq delta;
-
-    U64 comprSize = data.size();
-    initSymbols(cpData);
-
-    while (!pairCands.empty()) {
-        if ((int)symbols.size() >= maxSyms)
-            break;
-        auto it = pairCands.get<Freq>().begin();
-        assert(cacheSize >= 0);
-        if (it->indices.empty() && it->freq * 8 <= maxCache)
-            refillCache(cpData, maxCache);
-
-        const U16 X = it->p1;
-        const U16 Y = it->p2;
-        const U16 Z = (U16)symbols.size();
-        RePairSymbol newSym;
-        newSym.setPair(X, Y);
-        newSym.setLengthDepth(symbols[X].getLength() + symbols[Y].getLength(),
-                              std::max(symbols[X].getDepth(), symbols[Y].getDepth())+1);
-        symbols.push_back(newSym);
-        const int nSym = symbols.size();
-
-        std::cout << "XY->Z: " << X << ' ' << Y << ' ' << Z
-                  << " len:" << newSym.getLength() << " depth:" << newSym.getDepth() << std::endl;
-
-        delta.resize(nSym);
-
-        U64 nRepl = replacePairs(it->indices, X, Y, Z, delta);
-
-        int nAdded = 0, nRemoved = 0;
-        cacheSize -= it->indices.size();
-        pairCands.get<Freq>().erase(it);
-        for (int i = 0; i < nSym; i++) {
-            for (int k = 0; k < 2; k++) {
-                U16 p1 = (k == 0) ? i : Z;
-                U16 p2 = (k == 0) ? Z : i;
-                U64 f  = (k == 0) ? delta.deltaFreqAZ[i] : delta.deltaFreqZB[i];
-                if (f != 0) {
-                    ((k == 0) ? delta.deltaFreqAZ[i] : delta.deltaFreqZB[i]) = 0;
-                    std::vector<U64>& vec = (k == 0) ? delta.vecAZ[i] : delta.vecZB[i];
-                    if (f >= minFreq) {
-                        int d = std::max(symbols[i].getDepth(), symbols[Z].getDepth()) + 1;
-                        PairCand pc { (U16)p1, (U16)p2, d, f };
-                        cacheSize += vec.size();
-                        pc.indices = std::move(vec);
-                        pairCands.insert(std::move(pc));
-                        nAdded++;
-                    }
-                    vec.clear();
-                }
-            }
-        }
-        pruneCache(cpData, maxCache, comprSize);
-        for (int i = 0; i < nSym; i++) {
-            for (int k = 0; k < 2; k++) {
-                U16 p1 = (k == 0) ? i : Y;
-                U16 p2 = (k == 0) ? X : i;
-                S64 d  = (k == 0) ? delta.deltaFreqAX[i] : delta.deltaFreqYB[i];
-                if (d != 0) {
-                    ((k == 0) ? delta.deltaFreqAX[i] : delta.deltaFreqYB[i]) = 0;
-                    auto it2 = pairCands.get<Pair>().find(std::make_tuple(p1,p2));
-                    if (it2 != pairCands.get<Pair>().end()) {
-                        pairCands.get<Pair>().modify(it2, [d](PairCand& pc) { pc.freq += d; });
-                        if (it2->freq < minFreq) {
-                            cacheSize -= it2->indices.size();
-                            pairCands.get<Pair>().erase(it2);
-                            nRemoved++;
-                        }
-                    }
-                }
-            }
-        }
-        comprSize -= nRepl;
-        std::cout << "repl:" << nRepl << " add:" << nAdded << " remove:" << nRemoved
-                  << " cand:" << pairCands.size() << " cache:" << cacheSize
-                  << " compr:" << comprSize << std::endl;
-
-        int pruneFreq = -1;
-        while (pairCands.size() > maxCands) {
-            auto it2 = --pairCands.get<Freq>().end();
-            cacheSize -= it2->indices.size();
-            pruneFreq = (int)it2->freq;
-            pairCands.get<Freq>().erase(it2);
-        }
-        if (pruneFreq != -1)
-            std::cout << "candidate prune, freq:" << pruneFreq << std::endl;
-    }
 }
 
 void
