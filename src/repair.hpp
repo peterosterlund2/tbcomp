@@ -65,6 +65,8 @@ private:
     int getData(U64 idx) const;
     /** Return symbol at "idx" and advance idx to next symbol. */
     int getNextSymbol(U64& idx) const;
+    /** Return symbol before "idx" and retreat idx to previous symbol. */
+    int getPrevSymbol(U64& idx) const;
 
     std::vector<RePairSymbol> symbols;
     std::vector<U8>& data;
@@ -189,6 +191,19 @@ RePairComp::getNextSymbol(U64& idx) const {
     int ret = getData(idx);
     idx += symbols[ret].getLength();
     return ret;
+}
+
+inline int
+RePairComp::getPrevSymbol(U64& idx) const {
+    if (idx == 0)
+        return -1;
+    while (true) {
+        idx--;
+        if (getUsedIdx(idx))
+            return getData(idx);
+        if (idx == 0)
+            return -1;
+    }
 }
 
 inline RePairDeComp::RePairDeComp(const U8* inData)

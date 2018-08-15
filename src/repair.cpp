@@ -369,11 +369,7 @@ RePairComp::replacePairs(const std::vector<U64>& indices, int X, int Y, int Z,
             U64 idx = idxX; int x = getNextSymbol(idx); if (x != X) continue;
             U64 idxY = idx; int y = getNextSymbol(idx); if (y != Y) continue;
             int b = getNextSymbol(idx);
-            U64 idxA = idxX - 1; int a = -1;
-            if (idxX > 0)
-                while (true)
-                    if (((a = getData(idxA)) != -1) || (idxA-- == 0))
-                        break;
+            U64 idxA = idxX; int a = getPrevSymbol(idxA);
             if (a != -1) {
                 deltaFreqAZ[a]++; vecAZ[a].push_back(idxA);
                 deltaFreqAX[a]--;
