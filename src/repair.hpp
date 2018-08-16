@@ -77,6 +77,7 @@ private:
      * If the bit is 1 and the next bit is 0, the symbol is data[i]+256*data[i+1]
      */
     std::vector<U64> usedIdx;
+    int nThreads;
 };
 
 /** Decompress data previously compressed by RePairComp. */

@@ -1,5 +1,6 @@
 #include "repair.hpp"
 #include "huffman.hpp"
+#include "threadpool.hpp"
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/hashed_index.hpp>
@@ -13,6 +14,7 @@
 RePairComp::RePairComp(std::vector<U8>& inData, int minFreq, int maxSyms)
     : data(inData) {
     usedIdx.assign((inData.size()+1 + 63) / 64, ~(0ULL));
+    nThreads = std::thread::hardware_concurrency();
     compress((U64)minFreq, maxSyms);
 }
 
@@ -226,8 +228,24 @@ RePairComp::initSymbols(RePairImpl::CompressData& cpData) {
     int primitiveSyms[256];
     for (int i = 0; i < 256; i++)
         primitiveSyms[i] = 0;
-    for (U64 i = 0; i < dataLen; i++)
-        primitiveSyms[data[i]] = 1;
+    {
+        ThreadPool<std::array<int,256>> pool(nThreads);
+        U64 batchSize = std::max((U64)1024*1024, (dataLen + 1023) / 1024);
+        for (U64 b = 0; b < dataLen; b += batchSize) {
+            auto task = [this,dataLen,batchSize,b](int workerNo) {
+                std::array<int,256> result {};
+                U64 end = std::min(b + batchSize, dataLen);
+                for (U64 i = b; i < end; i++)
+                    result[data[i]] = 1;
+                return result;
+            };
+            pool.addTask(task);
+        }
+        std::array<int,256> result;
+        while (pool.getResult(result))
+            for (int i = 0; i < 256; i++)
+                primitiveSyms[i] |= result[i];
+    }
     for (int i = 0; i < 256; i++) {
         if (primitiveSyms[i]) {
             RePairSymbol s;
@@ -237,19 +255,52 @@ RePairComp::initSymbols(RePairImpl::CompressData& cpData) {
             std::cout << "sym:" << primitiveSyms[i] << " val:" << i << std::endl;
         }
     }
-    for (U64 i = 0; i < dataLen; i++)
-        data[i] = primitiveSyms[data[i]];
+
+    // Transform data[] to symbol values
+    {
+        ThreadPool<int> pool(nThreads);
+        const U64 batchSize = std::max((U64)1024*1024, (dataLen + 1023) / 1024);
+        for (U64 b = 0; b < dataLen; b += batchSize) {
+            auto task = [this,dataLen,&primitiveSyms,batchSize,b](int workerNo) {
+                U64 end = std::min(b + batchSize, dataLen);
+                for (U64 i = b; i < end; i++)
+                    data[i] = primitiveSyms[data[i]];
+                return 0;
+            };
+            pool.addTask(task);
+        }
+        int dummy;
+        while (pool.getResult(dummy))
+            ;
+    }
 
     // Create initial pair candidates
-    U64 initialFreq[256][256];
-    for (int i = 0; i < 256; i++)
-        for (int j = 0; j < 256; j++)
-            initialFreq[i][j] = 0;
-    for (U64 i = 1; i < dataLen; i++)
-        initialFreq[data[i-1]][data[i]]++;
+    struct FreqInfo {
+        std::array<U64,256*256> freq {};
+    };
+    FreqInfo initialFreq;
+    {
+        ThreadPool<FreqInfo> pool(nThreads);
+        const U64 batchSize = std::max((U64)16*1024*1024, (dataLen + 1023) / 1024);
+        for (U64 b = 0; b < dataLen; b += batchSize) {
+            auto task = [this,dataLen,batchSize,b](int workerNo) {
+                FreqInfo fi;
+                U64 beg = std::max((U64)1, b);
+                U64 end = std::min(b + batchSize, dataLen);
+                for (U64 i = beg; i < end; i++)
+                    fi.freq[data[i-1]*256+data[i]]++;
+                return fi;
+            };
+            pool.addTask(task);
+        }
+        FreqInfo fi;
+        while (pool.getResult(fi))
+            for (int i = 0; i < 256*256; i++)
+                initialFreq.freq[i] += fi.freq[i];
+    }
     for (int i = 0; i < 256; i++) {
         for (int j = 0; j < 256; j++) {
-            U64 f = initialFreq[i][j];
+            U64 f = initialFreq.freq[i*256+j];
             if (f >= minFreq)
                 pairCands.insert(PairCand{(U16)i,(U16)j,2,f});
         }
