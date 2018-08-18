@@ -23,6 +23,9 @@ private:
 
     // PosIndex
     void testSwapColors();
+
+    // ThreadPool
+    void testThreadPool();
 };
 
 

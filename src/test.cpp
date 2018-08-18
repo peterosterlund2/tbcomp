@@ -4,6 +4,7 @@
 #include "tbutil.hpp"
 #include "textio.hpp"
 #include "posindex.hpp"
+#include "threadpool.hpp"
 #include <utility>
 #include <algorithm>
 #include <iostream>
@@ -18,6 +19,7 @@ Test::runTests() {
     testFibFreq();
     testLookupTable();
     testSwapColors();
+    testThreadPool();
 }
 
 void
@@ -217,4 +219,35 @@ Test::testSwapColors() {
         U64 idx2 = pi.pos2Index(pos2);
         assert(idx1 == idx2);
     }
+}
+
+void
+Test::testThreadPool() {
+    ThreadPool<int> pool(8);
+
+    for (int i = 0; i < 100; i++) {
+        auto task = [i](int workerNo) {
+            if (i % 5 == 0)
+                throw i + 1;
+            return i + 1;
+        };
+        pool.addTask(task);
+    }
+    int resultSum = 0;
+    int exceptionSum = 0;
+    for (int i = 0; i < 100; i++) {
+        try {
+            int res;
+            bool ok = pool.getResult(res);
+            assert(ok);
+            resultSum += res;
+        } catch (int ex) {
+            exceptionSum += ex;
+        }
+    }
+    int res;
+    bool ok = pool.getResult(res);
+    assert(!ok);
+    assert(exceptionSum == 970);
+    assert(resultSum == 5050 - 970);
 }
