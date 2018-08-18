@@ -393,18 +393,49 @@ static void wdlDump(const std::string& tbType) {
             U64 end = std::min(b + batchSize, size);
             for (U64 idx = b; idx < end; idx++) {
                 Position pos;
-                bool ret = posIdx.index2Pos(idx, pos);
-                if (ret && MoveGen::canTakeKing(pos))
-                    ret = false;
-                int val = 3;
-                if (ret) {
-                    int success;
-                    int wdl = Syzygy::probe_wdl(pos, &success);
-                    if (!success)
-                        throw ChessParseError("RTB probe failed, pos:" + TextIO::toFEN(pos));
-                    if (!pos.isWhiteMove())
-                        wdl = -wdl;
-                    val = wdl;
+                bool valid = posIdx.index2Pos(idx, pos);
+                if (valid && MoveGen::canTakeKing(pos))
+                    valid = false;
+                int val;
+                if (!valid) {
+                    val = 3; // Invalid
+                } else {
+                    MoveList moves;
+                    MoveGen::pseudoLegalMoves(pos, moves);
+                    MoveGen::removeIllegal(pos, moves);
+                    if (moves.size == 0) {
+                        val = 4; // Game end
+                    } else {
+                        int success;
+                        UndoInfo ui;
+                        bool winCapt = false;
+                        const bool inCheck = MoveGen::inCheck(pos);
+                        for (int i = 0; i < moves.size; i++) {
+                            const Move& m = moves[i];
+                            if ((pos.getPiece(m.to()) == Piece::EMPTY) ||
+                                !MoveGen::isLegal(pos, m, inCheck))
+                                continue;
+                            pos.makeMove(m, ui);
+                            int wdl = Syzygy::probe_wdl(pos, &success);
+                            if (!success)
+                                throw ChessParseError("RTB probe failed, pos:" + TextIO::toFEN(pos));
+                            pos.unMakeMove(m, ui);
+                            if (wdl == -2) {
+                                winCapt = true;
+                                break;
+                            }
+                        }
+                        if (winCapt) {
+                            val = 5;
+                        } else {
+                            int wdl = Syzygy::probe_wdl(pos, &success);
+                            if (!success)
+                                throw ChessParseError("RTB probe failed, pos:" + TextIO::toFEN(pos));
+                            if (!pos.isWhiteMove())
+                                wdl = -wdl;
+                            val = wdl;
+                        }
+                    }
                 }
                 data[idx] = (U8)val;
             }
@@ -422,12 +453,13 @@ static void wdlDump(const std::string& tbType) {
     }
     std::cout << std::endl;
 
-    std::array<U64,6> cnt{};
+    std::array<U64,8> cnt{};
     for (U64 idx = 0; idx < size; idx++) {
         int val = (S8)data[idx];
         cnt[val+2]++;
     }
 
+    std::cout << "header: -2 -1 0 1 2 illegal gameEnd winCapt" << std::endl;
     std::cout << "abs: ";
     int mostFreq = 0;
     for (int i = 0; i < 5; i++) {
@@ -435,17 +467,19 @@ static void wdlDump(const std::string& tbType) {
         if (cnt[i] > cnt[mostFreq])
             mostFreq = i;
     }
-    std::cout << cnt[5] << std::endl;
+    std::cout << cnt[5] << ' ' << cnt[6] << ' ' << cnt[7] << std::endl;
 
     std::cout << "rel:";
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < (int)cnt.size(); i++)
         std::cout << ' ' << std::setw(4) << (cnt[i] * 1000 + size/2) / size;
     std::cout << std::endl;
 
     std::cout << "invalid:" << (cnt[5] / (double)size) << std::endl;
+    std::cout << "gameEnd:" << (cnt[6] / (double)size) << std::endl;
+    std::cout << "winCapt:" << (cnt[7] / (double)size) << std::endl;
 
     for (U64 idx = 0; idx < size; idx++)
-        if (data[idx] == 3)
+        if (data[idx] > 2 && data[idx] < 128)
             data[idx] = (U8)(mostFreq-2);
 
     std::ofstream outF("out.bin");
