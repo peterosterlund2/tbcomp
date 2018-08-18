@@ -391,8 +391,13 @@ static void wdlDump(const std::string& tbType) {
     for (U64 b = 0; b < size; b += batchSize) {
         auto task = [&posIdx,&data,size,batchSize,b](int workerNo) {
             U64 end = std::min(b + batchSize, size);
+            Position pos;
             for (U64 idx = b; idx < end; idx++) {
-                Position pos;
+                { // Clear position
+                    U64 m = pos.occupiedBB();
+                    while (m)
+                        pos.clearPiece(BitBoard::extractSquare(m));
+                }
                 bool valid = posIdx.index2Pos(idx, pos);
                 if (valid && MoveGen::canTakeKing(pos))
                     valid = false;
