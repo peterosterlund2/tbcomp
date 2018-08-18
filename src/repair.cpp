@@ -136,7 +136,7 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
             break;
         auto it = pairCands.get<Freq>().begin();
         assert(cacheSize >= 0);
-        if (it->indices.empty() && it->freq * 8 <= maxCache)
+        if (it->indices.empty() && it->freq * 8 <= maxCache && it->freq * 8 <= comprSize)
             refillCache(cpData, maxCache);
 
         const U16 X = it->p1;
