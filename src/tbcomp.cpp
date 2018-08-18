@@ -428,6 +428,7 @@ static void wdlDump(const std::string& tbType) {
         cnt[val+2]++;
     }
 
+    std::cout << "abs: ";
     int mostFreq = 0;
     for (int i = 0; i < 5; i++) {
         std::cout << cnt[i] << ' ';
@@ -435,6 +436,12 @@ static void wdlDump(const std::string& tbType) {
             mostFreq = i;
     }
     std::cout << cnt[5] << std::endl;
+
+    std::cout << "rel:";
+    for (int i = 0; i < 6; i++)
+        std::cout << ' ' << std::setw(4) << (cnt[i] * 1000 + size/2) / size;
+    std::cout << std::endl;
+
     std::cout << "invalid:" << (cnt[5] / (double)size) << std::endl;
 
     for (U64 idx = 0; idx < size; idx++)
