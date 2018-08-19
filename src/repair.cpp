@@ -373,8 +373,6 @@ RePairComp::refillCache(RePairImpl::CompressData& cpData, U64 maxCache) {
 
 U64
 RePairComp::replacePairs(int X, int Y, int Z, RePairImpl::DeltaFreq& delta) {
-    using namespace RePairImpl;
-
     std::vector<S64>& deltaFreqAZ = delta.deltaFreqAZ;
     std::vector<S64>& deltaFreqZB = delta.deltaFreqZB;
     std::vector<S64>& deltaFreqAX = delta.deltaFreqAX;
@@ -431,8 +429,6 @@ RePairComp::replacePairs(int X, int Y, int Z, RePairImpl::DeltaFreq& delta) {
 U64
 RePairComp::replacePairsIdxCache(const std::vector<U64>& indices, int X, int Y, int Z,
                                  RePairImpl::DeltaFreq& delta) {
-    using namespace RePairImpl;
-
     std::vector<S64>& deltaFreqAZ = delta.deltaFreqAZ;
     std::vector<S64>& deltaFreqZB = delta.deltaFreqZB;
     std::vector<S64>& deltaFreqAX = delta.deltaFreqAX;
