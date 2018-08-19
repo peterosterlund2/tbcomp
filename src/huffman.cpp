@@ -205,12 +205,14 @@ void Huffman::computePrefixCode(const std::vector<U64>& freqTable, HuffCode& cod
         compr += freqTable[i] * lenVec[i];
     compr = (compr + 7) / 8;
 
-#if 0
-    std::cout << "size: " << totFreq
-              << " entr: " << entr << ' ' << (entr / totFreq)
-              << " compr: " << compr << ' ' << (compr / (double)totFreq)
+    int minIdx = 0;
+    while (minIdx+1 < (int)sorted.size() && sorted[minIdx] == 0)
+        minIdx++;
+    std::cout << "huff size:" << totFreq
+              << " minL:" << sorted[minIdx] << " maxL:" << sorted.back()
+//              << " entr:" << entr << ' ' << (entr / totFreq)
+              << " compr:" << compr << " B/sym:" << (compr / (double)totFreq)
               << std::endl;
-#endif
 
     code.setSymbolLengths(lenVec, defaultSym);
 }
