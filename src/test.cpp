@@ -229,9 +229,7 @@ Test::testSymArray() {
     it = sa.iter(0);
     it.putSymbol(7);
     it.putSymbol(300);
-    sa.setUsedIdx(3, false);
     sa.setChunkUsedRange(0, 0, 3);
-    sa.setUsedIdx(4, false);
     sa.iter(5).putSymbol(400);
     sa.setChunkUsedRange(1, 5, 7);
     it = sa.iter(5);
