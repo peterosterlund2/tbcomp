@@ -43,7 +43,6 @@ public:
         U64 beg, end;  // Chunk range is beg <= i < end, const after created
         U64 begUsed;   // Used range is begUsed <= i < endUsed, non-const
         U64 endUsed;
-        bool straddle; // True if data[end] is second byte of a symbol // FIXME!! Never set. Remove?
     };
 
     /** Get iterator positioned at idx. */

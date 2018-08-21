@@ -21,6 +21,7 @@ private:
     // Re-pair
     void testLookupTable();
     void testSymArray();
+    void testSymArrayStraddle();
 
     // PosIndex
     void testSwapColors();

@@ -21,7 +21,6 @@ SymbolArray::SymbolArray(std::vector<U8>& data, int chLogSize)
         Chunk c;
         c.beg = c.begUsed = beg;
         c.end = c.endUsed = std::min(size, beg + chunkSize);
-        c.straddle = false;
         chunks.push_back(c);
     }
 }

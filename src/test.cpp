@@ -20,6 +20,7 @@ Test::runTests() {
     testFibFreq();
     testLookupTable();
     testSymArray();
+    testSymArrayStraddle();
     testSwapColors();
     testThreadPool();
 }
@@ -246,6 +247,31 @@ Test::testSymArray() {
     assert(it.moveToNext());
     assert(it.getIndex() == 5);
     assert(it.getSymbol() == 400);
+}
+
+void
+Test::testSymArrayStraddle() {
+    std::vector<U8> data { 1,2,3,4,5,6,7,8 };
+    SymbolArray sa(data, 2);
+
+    SymbolArray::iterator it = sa.iter(3);
+    it.putSymbol(1234);
+    sa.setChunkUsedRange(1, 5, 8);
+    std::vector<int> expected = { 1, 2, 3, 1234, 6, 7, 8 };
+    it = sa.iter(7);
+    int nSym = expected.size();
+    for (int i = 0; i < nSym; i++) {
+        assert(it.getSymbol() == expected[nSym-1-i]);
+        bool ok = it.moveToPrev();
+        assert(ok == (i < (nSym-1)));
+    }
+
+    it = sa.iter(0);
+    for (int i = 0; i < nSym; i++) {
+        assert(it.getSymbol() == expected[i]);
+        bool ok = it.moveToNext();
+        assert(ok == (i < (nSym-1)));
+    }
 }
 
 void
