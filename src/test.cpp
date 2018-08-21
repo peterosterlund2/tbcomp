@@ -1,6 +1,7 @@
 #include "test.hpp"
 #include "huffman.hpp"
 #include "repair.hpp"
+#include "symbolarray.hpp"
 #include "tbutil.hpp"
 #include "textio.hpp"
 #include "posindex.hpp"
@@ -18,6 +19,7 @@ Test::runTests() {
     testEncodeDecode();
     testFibFreq();
     testLookupTable();
+    testSymArray();
     testSwapColors();
     testThreadPool();
 }
@@ -189,6 +191,63 @@ Test::testLookupTable() {
     assert(cache.find(132)->second[3] == 12);
     vec = lut.lookup(1);
     assert(!vec);
+}
+
+void
+Test::testSymArray() {
+    std::vector<U8> data { 1,2,3,4,5,6,7,8 };
+    SymbolArray sa(data, 2);
+    for (int i = 0; i < 8; i++)
+        assert(sa.getUsedIdx(i));
+
+    SymbolArray::iterator it = sa.iter(0);
+    for (int i = 0; i < 8; i++) {
+        assert(it.getSymbol() == i + 1);
+        assert(it.getIndex() == (U64)i);
+        bool ok = it.moveToNext();
+        assert(ok == (i < 7));
+    }
+
+    it = sa.iter(7);
+    for (int i = 7; i >= 0; i--) {
+        assert(it.getSymbol() == i + 1);
+        assert(it.getIndex() == (U64)i);
+        bool ok = it.moveToPrev();
+        assert(ok == (i > 0));
+    }
+
+    it = sa.iter(0);
+    for (int i = 0; i < 4; i++) {
+        it.putSymbol(256+i);
+        assert(it.getIndex() == (U64)(i*2+2));
+        assert(sa.iter(i*2).getSymbol() == 256+i);
+    }
+
+    it = sa.iter(0);
+    for (int i = 0; i < 8; i++)
+        it.putSymbol(i+1);
+    it = sa.iter(0);
+    it.putSymbol(7);
+    it.putSymbol(300);
+    sa.setUsedIdx(3, false);
+    sa.setChunkUsedRange(0, 0, 3);
+    sa.setUsedIdx(4, false);
+    sa.iter(5).putSymbol(400);
+    sa.setChunkUsedRange(1, 5, 7);
+    it = sa.iter(5);
+    assert(it.getSymbol() == 400);
+    assert(it.moveToPrev());
+    assert(it.getIndex() == 1);
+    assert(it.getSymbol() == 300);
+    assert(it.moveToPrev());
+    assert(it.getIndex() == 0);
+    assert(it.getSymbol() == 7);
+    assert(!it.moveToPrev());
+
+    it = sa.iter(1);
+    assert(it.moveToNext());
+    assert(it.getIndex() == 5);
+    assert(it.getSymbol() == 400);
 }
 
 void

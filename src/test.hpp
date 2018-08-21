@@ -20,6 +20,7 @@ private:
 
     // Re-pair
     void testLookupTable();
+    void testSymArray();
 
     // PosIndex
     void testSwapColors();
