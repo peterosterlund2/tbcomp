@@ -12,8 +12,7 @@
 
 
 RePairComp::RePairComp(std::vector<U8>& inData, int minFreq, int maxSyms)
-    : data(inData) {
-    usedIdx.assign((inData.size()+1 + 63) / 64, ~(0ULL));
+    : sa(inData) {
     nThreads = std::thread::hardware_concurrency();
     compress((U64)minFreq, maxSyms);
 }
@@ -32,13 +31,14 @@ RePairComp::toBitBuf(BitBufferWriter& out) {
     // Compute symbol frequencies
     std::vector<U64> freq(symTableSize);
     U64 nSyms = 0;
-    U64 i = 0;
+    SymbolArray::iterator it = sa.iterAtChunk(0);
     while (true) {
-        int sym = getNextSymbol(i);
-        if (sym == -1)
-            break;
+        int sym = it.getSymbol();
+        assert(sym != -1);
         freq[sym]++;
         nSyms++;
+        if (!it.moveToNext())
+            break;
     }
 
     // Huffman encode symbols
@@ -47,12 +47,13 @@ RePairComp::toBitBuf(BitBufferWriter& out) {
     huff.computePrefixCode(freq, code);
     code.toBitBuf(out, true);
     out.writeU64(nSyms);
-    i = 0;
+    it = sa.iterAtChunk(0);
     while (true) {
-        int sym = getNextSymbol(i);
-        if (sym == -1)
-            break;
+        int sym = it.getSymbol();
+        assert(sym != -1);
         code.encodeSymbol(sym, out);
+        if (!it.moveToNext())
+            break;
     }
 }
 
@@ -123,12 +124,12 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
 
     const size_t maxCands = std::max(128*1024, 16*maxSyms); // Heuristic limit
 
-    const U64 maxCache = std::max(U64(64*1024*1024), data.size() / 512);
+    const U64 maxCache = std::max(U64(64*1024*1024), sa.size() / 512);
 
     // Delta frequencies when transforming AXYB -> AZB
     DeltaFreq delta;
 
-    U64 comprSize = data.size();
+    U64 comprSize = sa.size();
     initSymbols(cpData);
 
     while (!pairCands.empty()) {
@@ -223,7 +224,7 @@ RePairComp::initSymbols(RePairImpl::CompressData& cpData) {
     PairCandSet& pairCands = cpData.pairCands;
 
     const U64 minFreq = cpData.minFreq;
-    const U64 dataLen = data.size();
+    const int nChunks = sa.getChunks().size();
 
     // Create primitive symbols
     int primitiveSyms[256];
@@ -231,13 +232,15 @@ RePairComp::initSymbols(RePairImpl::CompressData& cpData) {
         primitiveSyms[i] = 0;
     {
         ThreadPool<std::array<int,256>> pool(nThreads);
-        U64 batchSize = std::max((U64)1024*1024, (dataLen + 1023) / 1024);
-        for (U64 b = 0; b < dataLen; b += batchSize) {
-            auto task = [this,dataLen,batchSize,b](int workerNo) {
+        for (int ch = 0; ch < nChunks; ch++) {
+            auto task = [this,ch](int workerNo) {
                 std::array<int,256> result {};
-                U64 end = std::min(b + batchSize, dataLen);
-                for (U64 i = b; i < end; i++)
-                    result[data[i]] = 1;
+                SymbolArray::iterator it = sa.iterAtChunk(ch);
+                U64 end = sa.getChunks()[ch].endUsed;
+                while (it.getIndex() < end) {
+                    result[it.getSymbol()] = 1;
+                    it.moveToNext();
+                }
                 return result;
             };
             pool.addTask(task);
@@ -260,12 +263,12 @@ RePairComp::initSymbols(RePairImpl::CompressData& cpData) {
     // Transform data[] to symbol values
     {
         ThreadPool<int> pool(nThreads);
-        const U64 batchSize = std::max((U64)1024*1024, (dataLen + 1023) / 1024);
-        for (U64 b = 0; b < dataLen; b += batchSize) {
-            auto task = [this,dataLen,&primitiveSyms,batchSize,b](int workerNo) {
-                U64 end = std::min(b + batchSize, dataLen);
-                for (U64 i = b; i < end; i++)
-                    data[i] = primitiveSyms[data[i]];
+        for (int ch = 0; ch < nChunks; ch++) {
+            auto task = [this,&primitiveSyms,ch](int workerNo) {
+                SymbolArray::iterator it = sa.iterAtChunk(ch);
+                U64 end = sa.getChunks()[ch].endUsed;
+                while (it.getIndex() < end)
+                    it.putSymbol(primitiveSyms[it.getSymbol()]);
                 return 0;
             };
             pool.addTask(task);
@@ -282,14 +285,17 @@ RePairComp::initSymbols(RePairImpl::CompressData& cpData) {
     FreqInfo initialFreq;
     {
         ThreadPool<FreqInfo> pool(nThreads);
-        const U64 batchSize = std::max((U64)16*1024*1024, (dataLen + 1023) / 1024);
-        for (U64 b = 0; b < dataLen; b += batchSize) {
-            auto task = [this,dataLen,batchSize,b](int workerNo) {
+        for (int ch = 0; ch < nChunks; ch++) {
+            auto task = [this,ch](int workerNo) {
                 FreqInfo fi;
-                U64 beg = std::max((U64)1, b);
-                U64 end = std::min(b + batchSize, dataLen);
-                for (U64 i = beg; i < end; i++)
-                    fi.freq[data[i-1]*256+data[i]]++;
+                SymbolArray::iterator it = sa.iterAtChunk(ch);
+                U64 end = sa.getChunks()[ch].endUsed;
+                int symA = it.getSymbol();
+                while (it.moveToNext() && it.getIndex() <= end) {
+                    int symB = it.getSymbol();
+                    fi.freq[symA*256+symB]++;
+                    symA = symB;
+                }
                 return fi;
             };
             pool.addTask(task);
@@ -347,16 +353,16 @@ RePairComp::refillCache(RePairImpl::CompressData& cpData, U64 maxCache) {
     std::cout << "refill cache: nElem:" << cache.size() << " minFreq:" << minCacheFreq << std::endl;
     LookupTable lut(cache);
     {
-        U64 idx = 0;
-        U64 idxX = idx; int x = getNextSymbol(idx);
-        U64 idxY = idx; int y = getNextSymbol(idx);
+        SymbolArray::iterator it = sa.iter(0);
+        U64 idxX = it.getIndex(); int x = it.getSymbol(); it.moveToNext();
+        U64 idxY = it.getIndex(); int y = it.getSymbol(); it.moveToNext();
         while (y != -1) {
             U32 key = (((U16)x) << 16) | (U16)y;
             std::vector<U64>* vec = lut.lookup(key);
             if (vec)
                 vec->push_back(idxX);
             idxX = idxY; x = y;
-            idxY = idx;  y = getNextSymbol(idx);
+            idxY = it.getIndex(); y = it.getSymbol(); it.moveToNext();
         }
     }
     for (auto& e : cache) {
@@ -378,21 +384,12 @@ RePairComp::replacePairs(int X, int Y, int Z, RePairImpl::DeltaFreq& delta) {
     std::vector<S64>& deltaFreqAX = delta.deltaFreqAX;
     std::vector<S64>& deltaFreqYB = delta.deltaFreqYB;
 
-    U64 outIdx = 0;
-    U64 idx = 0;
+    SymbolArray::iterator outIt = sa.iterAtChunk(0);
+    SymbolArray::iterator inIt = outIt;
     int a = -1;
-    int x = getNextSymbol(idx);
-    int y = getNextSymbol(idx);
-    int b = getNextSymbol(idx);
-
-    auto output = [this,&outIdx](int val) {
-        data[outIdx] = (U8)(val & 0xff);
-        setUsedIdx(outIdx++, true);
-        if (val >= 256) {
-            data[outIdx] = (U8)(val >> 8);
-            setUsedIdx(outIdx++, false);
-        }
-    };
+    int x = inIt.getSymbol(); inIt.moveToNext();
+    int y = inIt.getSymbol(); inIt.moveToNext();
+    int b = inIt.getSymbol(); inIt.moveToNext();
 
     U64 nRepl = 0;
     while (y != -1) {
@@ -405,23 +402,28 @@ RePairComp::replacePairs(int X, int Y, int Z, RePairImpl::DeltaFreq& delta) {
                 deltaFreqZB[b]++;
                 deltaFreqYB[b]--;
             }
-            output(Z);
+            outIt.putSymbol(Z);
             a = Z;
             x = b;
-            y = getNextSymbol(idx);
-            b = getNextSymbol(idx);
+            y = inIt.getSymbol(); inIt.moveToNext();
+            b = inIt.getSymbol(); inIt.moveToNext();
             nRepl++;
         } else {
-            output(x);
+            outIt.putSymbol(x);
             a = x;
             x = y;
             y = b;
-            b = getNextSymbol(idx);
+            b = inIt.getSymbol(); inIt.moveToNext();
         }
     }
     if (x != -1)
-        output(x);
-    data.resize(outIdx);
+        outIt.putSymbol(x);
+
+    U64 end = outIt.getIndex();
+    for (int ch = sa.getChunkIdx(end); ch < (int)sa.getChunks().size(); ch++) {
+        SymbolArray::Chunk& chunk = const_cast<SymbolArray::Chunk&>(sa.getChunks()[ch]);
+        chunk.endUsed = std::max(chunk.begUsed, end);
+    }
 
     return nRepl;
 }
@@ -438,21 +440,21 @@ RePairComp::replacePairsIdxCache(const std::vector<U64>& indices, int X, int Y, 
 
     U64 nRepl = 0;
     for (U64 idxX : indices) { // Transform AXYB -> AZB
-        U64 idx = idxX; int x = getNextSymbol(idx); if (x != X) continue;
-        U64 idxY = idx; int y = getNextSymbol(idx); if (y != Y) continue;
-        int b = getNextSymbol(idx);
-        U64 idxA = idxX; int a = getPrevSymbol(idxA);
+        SymbolArray::iterator it = sa.iter(idxX);
+        int x = it.getSymbol(); if (x != X) continue; it.moveToNext();
+        int y = it.getSymbol(); if (y != Y) continue; U64 idxY = it.getIndex(); it.moveToNext();
+        int b = it.getSymbol();
+        SymbolArray::iterator itA = sa.iter(idxX);
+        int a = itA.moveToPrev() ? itA.getSymbol() : -1;
         if (a != -1) {
-            deltaFreqAZ[a]++; vecAZ[a].push_back(idxA);
+            deltaFreqAZ[a]++; vecAZ[a].push_back(itA.getIndex());
             deltaFreqAX[a]--;
         }
         if (b != -1) {
             deltaFreqZB[b]++; vecZB[b].push_back(idxX);
             deltaFreqYB[b]--;
         }
-        data[idxX] = (U8)(Z & 0xff);
-        data[idxX+1] = (U8)(Z >> 8);
-        setUsedIdx(idxY, false);
+        sa.combineSymbol(idxX, idxY, Z);
         nRepl++;
     }
     return nRepl;

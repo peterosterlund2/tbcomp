@@ -2,6 +2,7 @@
 #define REPAIR_HPP_
 
 #include "bitbuffer.hpp"
+#include "symbolarray.hpp"
 #include <unordered_map>
 
 namespace RePairImpl {
@@ -59,25 +60,8 @@ private:
     U64 replacePairsIdxCache(const std::vector<U64>& indices, int X, int Y, int Z,
                              RePairImpl::DeltaFreq& delta);
 
-    bool getUsedIdx(U64 idx) const;
-    void setUsedIdx(U64 idx, bool val);
-
-    /** Return the symbol at index 'idx', or -1 if no symbol at that index. */
-    int getData(U64 idx) const;
-    /** Return symbol at "idx" and advance idx to next symbol. */
-    int getNextSymbol(U64& idx) const;
-    /** Return symbol before "idx" and retreat idx to previous symbol. */
-    int getPrevSymbol(U64& idx) const;
-
     std::vector<RePairSymbol> symbols;
-    std::vector<U8>& data;
-    /**
-     * Each bit in usedIdx corresponds to one entry in data.
-     * If the bit is 0, data[i] does not represent a symbol.
-     * If the bit is 1 and the next bit is 1, the symbol is data[i]
-     * If the bit is 1 and the next bit is 0, the symbol is data[i]+256*data[i+1]
-     */
-    std::vector<U64> usedIdx;
+    SymbolArray sa;
     int nThreads;
 };
 
@@ -163,51 +147,6 @@ inline int RePairSymbol::getDepth() const {
     return depth;
 }
 
-
-inline bool RePairComp::getUsedIdx(U64 idx) const {
-    return usedIdx[idx/64] & (1ULL << (idx%64));
-}
-
-inline void RePairComp::setUsedIdx(U64 idx, bool val) {
-    if (val)
-        usedIdx[idx/64] |= 1ULL << (idx%64);
-    else
-        usedIdx[idx/64] &= ~(1ULL << (idx%64));
-}
-
-inline int
-RePairComp::getData(U64 idx) const {
-    if (getUsedIdx(idx)) {
-        int ret = data[idx];
-        if (!getUsedIdx(idx+1))
-            ret += 256 * data[idx + 1];
-        return ret;
-    }
-    return -1;
-}
-
-inline int
-RePairComp::getNextSymbol(U64& idx) const {
-    if (idx >= data.size())
-        return -1;
-    int ret = getData(idx);
-    while (++idx < data.size() && !getUsedIdx(idx))
-        ;
-    return ret;
-}
-
-inline int
-RePairComp::getPrevSymbol(U64& idx) const {
-    if (idx == 0)
-        return -1;
-    while (true) {
-        idx--;
-        if (getUsedIdx(idx))
-            return getData(idx);
-        if (idx == 0)
-            return -1;
-    }
-}
 
 inline RePairDeComp::RePairDeComp(const U8* inData)
     : data(inData) {
