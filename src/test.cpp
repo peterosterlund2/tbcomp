@@ -21,6 +21,7 @@ Test::runTests() {
     testLookupTable();
     testSymArray();
     testSymArrayStraddle();
+    testSymArrayEmptyChunk();
     testSwapColors();
     testThreadPool();
 }
@@ -198,6 +199,7 @@ void
 Test::testSymArray() {
     std::vector<U8> data { 1,2,3,4,5,6,7,8 };
     SymbolArray sa(data, 2);
+    assert(sa.size() == 8);
     for (int i = 0; i < 8; i++)
         assert(sa.getUsedIdx(i));
 
@@ -208,6 +210,7 @@ Test::testSymArray() {
         bool ok = it.moveToNext();
         assert(ok == (i < 7));
     }
+    assert(it.getSymbol() == -1);
 
     it = sa.iter(7);
     for (int i = 7; i >= 0; i--) {
@@ -247,6 +250,28 @@ Test::testSymArray() {
     assert(it.moveToNext());
     assert(it.getIndex() == 5);
     assert(it.getSymbol() == 400);
+
+    // combineSymbol
+    sa.setChunkUsedRange(0, 0, 4);
+    sa.setChunkUsedRange(1, 4, 8);
+    it = sa.iter(0);
+    for (int i = 0; i < 8; i++)
+        it.putSymbol(i+1);
+    sa.combineSymbol(3, 4, 17);
+    assert(sa.iter(3).getSymbol() == 17);
+    assert(sa.iter(4).getSymbol() == -1);
+    assert(sa.iter(5).getSymbol() == 6);
+    sa.combineSymbol(3, 5, 18);
+    assert(sa.iter(3).getSymbol() == 18);
+    assert(sa.iter(4).getSymbol() == -1);
+    assert(sa.iter(5).getSymbol() == -1);
+    assert(sa.iter(6).getSymbol() == 7);
+    sa.combineSymbol(3, 6, 1800);
+    assert(sa.iter(3).getSymbol() == 1800);
+    assert(sa.iter(4).getSymbol() == -1);
+    assert(sa.iter(5).getSymbol() == -1);
+    assert(sa.iter(6).getSymbol() == -1);
+    assert(sa.iter(7).getSymbol() == 8);
 }
 
 void
@@ -270,6 +295,40 @@ Test::testSymArrayStraddle() {
     for (int i = 0; i < nSym; i++) {
         assert(it.getSymbol() == expected[i]);
         bool ok = it.moveToNext();
+        assert(ok == (i < (nSym-1)));
+    }
+
+    it = sa.iterAtChunk(1);
+    assert(it.getIndex() == 5);
+    assert(it.getSymbol() == 6);
+}
+
+void
+Test::testSymArrayEmptyChunk() {
+    std::vector<U8> data { 1,2,3,4, 5,6,7,8, 9,10,11,12 };
+    SymbolArray sa(data, 2);
+    sa.setChunkUsedRange(1, 0, 0);
+    sa.iter(4).putSymbol(0);
+    for (int i = 4; i < 8; i++)
+        sa.setUsedIdx(i, false);
+    SymbolArray::iterator it = sa.iterAtChunk(0);
+    std::vector<int> expected = { 1,2,3,4, 9,10,11,12 };
+    int nSym = expected.size();
+    for (int i = 0; i < nSym; i++) {
+        assert(it.getSymbol() == expected[i]);
+        bool ok = it.moveToNext();
+        assert(ok == (i < (nSym-1)));
+    }
+
+    sa.iter(3).putSymbol(0);
+    sa.setUsedIdx(3, false);
+    sa.setChunkUsedRange(0, 0, 3);
+    it = sa.iter(11);
+    expected = { 12,11,10,9, 3,2,1 };
+    nSym = expected.size();
+    for (int i = 0; i < nSym; i++) {
+        assert(it.getSymbol() == expected[i]);
+        bool ok = it.moveToPrev();
         assert(ok == (i < (nSym-1)));
     }
 }

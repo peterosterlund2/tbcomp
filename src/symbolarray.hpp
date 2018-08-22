@@ -12,6 +12,9 @@ public:
     /** Construct symbol array from 1 byte symbols. */
     SymbolArray(std::vector<U8>& data, int chunkLogSize = -1);
 
+    /** Size in bytes of the underlying data array. */
+    U64 size() const;
+
     class iterator {
     public:
         /** Create iterator positioned at idx. */
@@ -47,6 +50,8 @@ public:
 
     /** Get iterator positioned at idx. */
     iterator iter(U64 idx);
+    /** Get iterator position at start of chunk. */
+    iterator iterAtChunk(int chunk);
 
     /** Get chunk index corresponding to byte idx. */
     int getChunkIdx(U64 idx) const;
@@ -59,6 +64,8 @@ public:
 
     bool getUsedIdx(U64 idx) const;
     void setUsedIdx(U64 idx, bool val);
+    /** Remove symbols at idxX and idxY. Store symbol "val" at idxX. */
+    void combineSymbol(U64 idxX, U64 idxY, int val);
 
 private:
     std::vector<U8>& data;
@@ -121,7 +128,7 @@ SymbolArray::iterator::getIndex() const {
 
 inline int
 SymbolArray::iterator::getSymbol() const {
-    if (arr->getUsedIdx(idx)) {
+    if (idx < endUsed && arr->getUsedIdx(idx)) {
         int ret = arr->data[idx];
         if (!arr->getUsedIdx(idx + 1))
             ret += 256 * arr->data[idx + 1];
@@ -142,9 +149,19 @@ SymbolArray::iterator::putSymbol(int val) {
 
 // ----------------------------------------------------------------
 
+inline U64
+SymbolArray::size() const {
+    return data.size();
+}
+
 inline SymbolArray::iterator
 SymbolArray::iter(U64 idx) {
     return iterator(this, idx);
+}
+
+inline SymbolArray::iterator
+SymbolArray::iterAtChunk(int chunk) {
+    return iterator(this, chunks[chunk].begUsed);
 }
 
 inline int
@@ -175,6 +192,13 @@ SymbolArray::setUsedIdx(U64 idx, bool val) {
         usedIdx[idx/64] |= 1ULL << (idx%64);
     else
         usedIdx[idx/64] &= ~(1ULL << (idx%64));
+}
+
+inline void
+SymbolArray::combineSymbol(U64 idxX, U64 idxY, int val) {
+    data[idxX] = (U8)(val & 0xff);
+    data[idxX+1] = (U8)(val >> 8);
+    setUsedIdx(idxY, false);
 }
 
 #endif

@@ -22,6 +22,7 @@ private:
     void testLookupTable();
     void testSymArray();
     void testSymArrayStraddle();
+    void testSymArrayEmptyChunk();
 
     // PosIndex
     void testSwapColors();
