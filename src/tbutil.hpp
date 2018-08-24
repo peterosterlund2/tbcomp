@@ -10,15 +10,17 @@
 #include <sstream>
 #include <stdio.h>
 
+template<typename T> struct MakePrintable { static T convert(const T& v) { return v; } };
+template<> struct MakePrintable<U8> { static int convert(const U8& v) { return v; } };
 
-template <typename T>
+template<typename T>
 std::ostream& operator<<(std::ostream& os, const std::vector<T>& v) {
     os << "[";
     bool first = true;
     for (const T& e : v) {
         if (!first)
             os << ", ";
-        os << e;
+        os << MakePrintable<T>::convert(e);
         first = false;
     }
     os << " ]";
