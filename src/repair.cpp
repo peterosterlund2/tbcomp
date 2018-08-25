@@ -389,7 +389,7 @@ RePairComp::replacePairs(int X, int Y, int Z, RePairImpl::DeltaFreq& delta) {
     U64 nRepl = 0;
     for (int ch = 0; ch < nChunks; ch++) {
         SymbolArray::iterator inIt = sa.iterAtChunk(ch);
-        SymbolArray::iterator outIt = sa.iter(inIt.getIndex());
+        SymbolArray::iterator outIt(inIt);
         U64 end = sa.getChunks()[ch].endUsed;
 
         if (inIt.getSymbol() == -1) {
@@ -454,10 +454,10 @@ RePairComp::replacePairsIdxCache(const std::vector<U64>& indices, int X, int Y, 
     U64 nRepl = 0;
     for (U64 idxX : indices) { // Transform AXYB -> AZB
         SymbolArray::iterator it = sa.iter(idxX);
+        SymbolArray::iterator itA(it);
         int x = it.getSymbol(); if (x != X) continue; it.moveToNext();
         int y = it.getSymbol(); if (y != Y) continue; U64 idxY = it.getIndex(); it.moveToNext();
         int b = it.getSymbol();
-        SymbolArray::iterator itA = sa.iter(idxX);
         int a = itA.moveToPrev() ? itA.getSymbol() : -1;
         if (a != -1) {
             deltaFreqAZ[a]++; vecAZ[a].push_back(itA.getIndex());

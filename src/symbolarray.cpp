@@ -1,21 +1,18 @@
 #include "symbolarray.hpp"
 
-SymbolArray::SymbolArray(std::vector<U8>& data, int chLogSize)
+SymbolArray::SymbolArray(std::vector<U8>& data, int chSize)
     : data(data) {
     U64 size = data.size();
     usedIdx.assign((size+1 + 63) / 64, ~(0ULL));
 
-    if (chLogSize == -1) {
-        chunkLogSize = 20;
-        U64 chunkSize = 1ULL << chunkLogSize;
-        while ((size + chunkSize - 1) / chunkSize > 1024) {
-            chunkLogSize++;
+    if (chSize == -1) {
+        chunkSize = 1ULL << 20;
+        while ((size + chunkSize - 1) / chunkSize > 1024)
             chunkSize *= 2;
-        }
+        chunkSize += 633 * 64; // To avoid cache conflict misses
     } else {
-        chunkLogSize = chLogSize;
+        chunkSize = chSize;
     }
-    U64 chunkSize = 1ULL << chunkLogSize;
     U64 beg = 0;
     for (int i = 0; beg < size; i++, beg += chunkSize) {
         Chunk c;

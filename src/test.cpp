@@ -198,7 +198,7 @@ Test::testLookupTable() {
 void
 Test::testSymArray() {
     std::vector<U8> data { 1,2,3,4,5,6,7,8 };
-    SymbolArray sa(data, 2);
+    SymbolArray sa(data, 4);
     assert(sa.size() == 8);
     for (int i = 0; i < 8; i++)
         assert(sa.getUsedIdx(i));
@@ -230,6 +230,7 @@ Test::testSymArray() {
     it = sa.iter(0);
     for (int i = 0; i < 8; i++)
         it.putSymbol(i+1);
+    assert(sa.getChunks().size() == 2);
     it = sa.iter(0);
     it.putSymbol(7);
     it.putSymbol(300);
@@ -277,7 +278,7 @@ Test::testSymArray() {
 void
 Test::testSymArrayStraddle() {
     std::vector<U8> data { 1,2,3,4,5,6,7,8 };
-    SymbolArray sa(data, 2);
+    SymbolArray sa(data, 4);
 
     SymbolArray::iterator it = sa.iter(3);
     it.putSymbol(1234);
@@ -306,7 +307,7 @@ Test::testSymArrayStraddle() {
 void
 Test::testSymArrayEmptyChunk() {
     std::vector<U8> data { 1,2,3,4, 5,6,7,8, 9,10,11,12 };
-    SymbolArray sa(data, 2);
+    SymbolArray sa(data, 4);
     sa.setChunkUsedRange(1, 0, 0);
     sa.iter(4).putSymbol(0);
     for (int i = 4; i < 8; i++)

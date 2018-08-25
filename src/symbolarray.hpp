@@ -10,7 +10,7 @@
 class SymbolArray {
 public:
     /** Construct symbol array from 1 byte symbols. */
-    SymbolArray(std::vector<U8>& data, int chunkLogSize = -1);
+    SymbolArray(std::vector<U8>& data, int chunkSize = -1);
 
     /** Size in bytes of the underlying data array. */
     U64 size() const;
@@ -76,7 +76,7 @@ private:
      * If the bit is 1 and the next bit is 0, the symbol is data[i]+256*data[i+1]
      */
     std::vector<U64> usedIdx; // 1 bit per element in data[]
-    int chunkLogSize;         // Common log2(end-beg) value (except for last chunk)
+    U64 chunkSize;            // Common (end-beg) value (except for last chunk)
 
     std::vector<Chunk> chunks;
 };
@@ -166,7 +166,7 @@ SymbolArray::iterAtChunk(int chunk) {
 
 inline int
 SymbolArray::getChunkIdx(U64 idx) const {
-    return idx >> chunkLogSize;
+    return idx / chunkSize;
 }
 
 inline const std::vector<SymbolArray::Chunk>&
