@@ -13,6 +13,8 @@
 
 RePairComp::RePairComp(std::vector<U8>& inData, int minFreq, int maxSyms)
     : sa(inData) {
+    std::cout << "nChunks:" << sa.getChunks().size()
+              << " chunkSize:" << (sa.getChunks()[0].end - sa.getChunks()[0].beg) << std::endl;
     nThreads = std::thread::hardware_concurrency();
     compress((U64)minFreq, maxSyms);
 }
@@ -151,12 +153,15 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
         const int nSym = symbols.size();
 
         std::cout << "XY->Z: " << X << ' ' << Y << ' ' << Z
-                  << " len:" << newSym.getLength() << " depth:" << newSym.getDepth() << std::endl;
+                  << " len:" << newSym.getLength() << " depth:" << newSym.getDepth()
+                  << " freq:" << it->freq << std::endl;
 
         delta.resize(nSym);
 
         U64 nRepl = it->indices.empty() ? replacePairs(X, Y, Z, delta) :
                                           replacePairsIdxCache(it->indices, X, Y, Z, delta);
+        delta.deltaFreqAZ[Z] += delta.deltaFreqZB[Z];
+        delta.deltaFreqZB[Z] = 0;
 
         int nAdded = 0, nRemoved = 0;
         cacheSize -= it->indices.size();
@@ -383,58 +388,124 @@ RePairComp::replacePairs(int X, int Y, int Z, RePairImpl::DeltaFreq& delta) {
     std::vector<S64>& deltaFreqZB = delta.deltaFreqZB;
     std::vector<S64>& deltaFreqAX = delta.deltaFreqAX;
     std::vector<S64>& deltaFreqYB = delta.deltaFreqYB;
+    const int nSym = deltaFreqAZ.size();
 
     const int nChunks = sa.getChunks().size();
 
-    U64 nRepl = 0;
-    for (int ch = 0; ch < nChunks; ch++) {
-        SymbolArray::iterator inIt = sa.iterAtChunk(ch);
-        SymbolArray::iterator outIt(inIt);
-        U64 end = sa.getChunks()[ch].endUsed;
-
-        if (inIt.getSymbol() == -1) {
-            inIt.moveToNext();
-            U64 idx = outIt.getIndex();
-            if (idx > 0 && sa.getUsedIdx(idx-1))
-                outIt = sa.iter(idx+1);
+    std::vector<bool> conflicts(nChunks, false);
+    if (X == Y) {
+        for (int ch = 1; ch < nChunks; ch++) {
+            SymbolArray::iterator it = sa.iterAtChunk(ch);
+            if (it.getSymbol() == -1)
+                it.moveToNext();
+            SymbolArray::iterator it2(it);
+            if (!it2.moveToPrev())
+                continue;
+            int s0 = it2.getSymbol();
+            int s1 = it.getSymbol(); it.moveToNext();
+            int s2 = it.getSymbol();
+            if (s0 == X && s1 == X && s2 == X)
+                conflicts[ch] = true;
         }
+    }
 
-        SymbolArray::iterator itA(inIt);
-        int a = itA.moveToPrev() ? itA.getSymbol() : -1;
-        int x = inIt.getSymbol(); U64 idxX = inIt.getIndex(); inIt.moveToNext();
-        int y = inIt.getSymbol(); U64 idxY = inIt.getIndex(); inIt.moveToNext();
-        int b = inIt.getSymbol(); U64 idxB = inIt.getIndex(); inIt.moveToNext();
+    struct Result {
+        Result(int nSym)
+            : nRepl(0), deltaFreqAZ(nSym), deltaFreqZB(nSym),
+              deltaFreqAX(nSym), deltaFreqYB(nSym) {
+        }
+        U64 nRepl;
+        std::vector<S64> deltaFreqAZ;
+        std::vector<S64> deltaFreqZB;
+        std::vector<S64> deltaFreqAX;
+        std::vector<S64> deltaFreqYB;
+    };
 
-        while (idxX < end) {
-            if (x == X && y == Y) { // Transform AXYB -> AZB
-                if (a != -1) {
-                    deltaFreqAZ[a]++;
-                    deltaFreqAX[a]--;
+    std::mutex mutex;
+    ThreadPool<Result> pool(nThreads);
+    int ch0 = 0;
+    for (int ch1 = 0; ch1 < nChunks; ch1++) {
+        if (ch1 + 1 < nChunks && conflicts[ch1 + 1])
+            continue;
+        auto task = [this,X,Y,Z,nSym,&mutex,ch0,ch1](int threadNo) {
+            Result res(nSym);
+            for (int ch = ch0; ch <= ch1; ch++) {
+                SymbolArray::iterator inIt = sa.iterAtChunk(ch);
+                SymbolArray::iterator outIt(inIt);
+                U64 beg = sa.getChunks()[ch].beg;
+                U64 end = sa.getChunks()[ch].endUsed;
+
+                if (inIt.getSymbol() == -1) {
+                    inIt.moveToNext();
+                    U64 idx = outIt.getIndex();
+                    if (idx > 0 && sa.getUsedIdx(idx-1))
+                        outIt = sa.iter(idx+1);
                 }
-                if (b != -1) {
-                    deltaFreqZB[b]++;
-                    deltaFreqYB[b]--;
+
+                mutex.lock();
+                bool locked = true;
+                SymbolArray::iterator itA(inIt);
+                int a = itA.moveToPrev() ? itA.getSymbol() : -1;
+                int x = inIt.getSymbol(); U64 idxX = inIt.getIndex(); inIt.moveToNext();
+                int y = inIt.getSymbol(); U64 idxY = inIt.getIndex(); inIt.moveToNext();
+                int b = inIt.getSymbol(); U64 idxB = inIt.getIndex(); inIt.moveToNext();
+
+                while (idxX < end) {
+                    if (locked && inIt.getIndex() >= beg + 64) {
+                        mutex.unlock();
+                        locked = false;
+                    }
+                    if (!locked && inIt.getIndex() + 3 >= end - 64) {
+                        mutex.lock();
+                        locked = true;
+                    }
+                    if (x == X && y == Y) { // Transform AXYB -> AZB
+                        if (a != -1) {
+                            res.deltaFreqAZ[a]++;
+                            res.deltaFreqAX[a]--;
+                        }
+                        if (b != -1) {
+                            res.deltaFreqZB[b]++;
+                            res.deltaFreqYB[b]--;
+                        }
+                        sa.setUsedIdx(idxY, false);
+                        outIt.putSymbol(Z);
+                        a = Z;
+                        x = b; idxX = idxB;
+                        y = inIt.getSymbol(); idxY = inIt.getIndex(); inIt.moveToNext();
+                        b = inIt.getSymbol(); idxB = inIt.getIndex(); inIt.moveToNext();
+                        res.nRepl++;
+                    } else {
+                        outIt.putSymbol(x);
+                        a = x;
+                        x = y; idxX = idxY;
+                        y = b; idxY = idxB;
+                        b = inIt.getSymbol(); idxB = inIt.getIndex(); inIt.moveToNext();
+                    }
                 }
-                sa.setUsedIdx(idxY, false);
-                outIt.putSymbol(Z);
-                a = Z;
-                x = b; idxX = idxB;
-                y = inIt.getSymbol(); idxY = inIt.getIndex(); inIt.moveToNext();
-                b = inIt.getSymbol(); idxB = inIt.getIndex(); inIt.moveToNext();
-                nRepl++;
-            } else {
-                outIt.putSymbol(x);
-                a = x;
-                x = y; idxX = idxY;
-                y = b; idxY = idxB;
-                b = inIt.getSymbol(); idxB = inIt.getIndex(); inIt.moveToNext();
+                SymbolArray::Chunk& chunk = const_cast<SymbolArray::Chunk&>(sa.getChunks()[ch]);
+                chunk.endUsed = outIt.getIndex();
+                if (outIt.getIndex() < sa.getChunks()[ch].end) {
+                    outIt.putSymbol(0);
+                    sa.setUsedIdx(outIt.getIndex()-1, false);
+                }
+                if (locked)
+                    mutex.unlock();
             }
-        }
-        SymbolArray::Chunk& chunk = const_cast<SymbolArray::Chunk&>(sa.getChunks()[ch]);
-        chunk.endUsed = outIt.getIndex();
-        if (outIt.getIndex() < sa.getChunks()[ch].end) {
-            outIt.putSymbol(0);
-            sa.setUsedIdx(outIt.getIndex()-1, false);
+            return res;
+        };
+        pool.addTask(task);
+        ch0 = ch1 + 1;
+    }
+    U64 nRepl = 0;
+    Result res(0);
+    while (pool.getResult(res)) {
+        nRepl += res.nRepl;
+        for (int i = 0; i < nSym; i++) {
+            deltaFreqAZ[i] += res.deltaFreqAZ[i];
+            deltaFreqZB[i] += res.deltaFreqZB[i];
+            deltaFreqAX[i] += res.deltaFreqAX[i];
+            deltaFreqYB[i] += res.deltaFreqYB[i];
         }
     }
 
