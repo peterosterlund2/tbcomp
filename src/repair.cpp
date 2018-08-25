@@ -384,45 +384,58 @@ RePairComp::replacePairs(int X, int Y, int Z, RePairImpl::DeltaFreq& delta) {
     std::vector<S64>& deltaFreqAX = delta.deltaFreqAX;
     std::vector<S64>& deltaFreqYB = delta.deltaFreqYB;
 
-    SymbolArray::iterator outIt = sa.iterAtChunk(0);
-    SymbolArray::iterator inIt = outIt;
-    int a = -1;
-    int x = inIt.getSymbol(); inIt.moveToNext();
-    int y = inIt.getSymbol(); inIt.moveToNext();
-    int b = inIt.getSymbol(); inIt.moveToNext();
+    const int nChunks = sa.getChunks().size();
 
     U64 nRepl = 0;
-    while (y != -1) {
-        if (x == X && y == Y) { // Transform AXYB -> AZB
-            if (a != -1) {
-                deltaFreqAZ[a]++;
-                deltaFreqAX[a]--;
-            }
-            if (b != -1) {
-                deltaFreqZB[b]++;
-                deltaFreqYB[b]--;
-            }
-            outIt.putSymbol(Z);
-            a = Z;
-            x = b;
-            y = inIt.getSymbol(); inIt.moveToNext();
-            b = inIt.getSymbol(); inIt.moveToNext();
-            nRepl++;
-        } else {
-            outIt.putSymbol(x);
-            a = x;
-            x = y;
-            y = b;
-            b = inIt.getSymbol(); inIt.moveToNext();
-        }
-    }
-    if (x != -1)
-        outIt.putSymbol(x);
+    for (int ch = 0; ch < nChunks; ch++) {
+        SymbolArray::iterator inIt = sa.iterAtChunk(ch);
+        SymbolArray::iterator outIt = sa.iter(inIt.getIndex());
+        U64 end = sa.getChunks()[ch].endUsed;
 
-    U64 end = outIt.getIndex();
-    for (int ch = sa.getChunkIdx(end); ch < (int)sa.getChunks().size(); ch++) {
+        if (inIt.getSymbol() == -1) {
+            inIt.moveToNext();
+            U64 idx = outIt.getIndex();
+            if (idx > 0 && sa.getUsedIdx(idx-1))
+                outIt = sa.iter(idx+1);
+        }
+
+        SymbolArray::iterator itA(inIt);
+        int a = itA.moveToPrev() ? itA.getSymbol() : -1;
+        int x = inIt.getSymbol(); U64 idxX = inIt.getIndex(); inIt.moveToNext();
+        int y = inIt.getSymbol(); U64 idxY = inIt.getIndex(); inIt.moveToNext();
+        int b = inIt.getSymbol(); U64 idxB = inIt.getIndex(); inIt.moveToNext();
+
+        while (idxX < end) {
+            if (x == X && y == Y) { // Transform AXYB -> AZB
+                if (a != -1) {
+                    deltaFreqAZ[a]++;
+                    deltaFreqAX[a]--;
+                }
+                if (b != -1) {
+                    deltaFreqZB[b]++;
+                    deltaFreqYB[b]--;
+                }
+                sa.setUsedIdx(idxY, false);
+                outIt.putSymbol(Z);
+                a = Z;
+                x = b; idxX = idxB;
+                y = inIt.getSymbol(); idxY = inIt.getIndex(); inIt.moveToNext();
+                b = inIt.getSymbol(); idxB = inIt.getIndex(); inIt.moveToNext();
+                nRepl++;
+            } else {
+                outIt.putSymbol(x);
+                a = x;
+                x = y; idxX = idxY;
+                y = b; idxY = idxB;
+                b = inIt.getSymbol(); idxB = inIt.getIndex(); inIt.moveToNext();
+            }
+        }
         SymbolArray::Chunk& chunk = const_cast<SymbolArray::Chunk&>(sa.getChunks()[ch]);
-        chunk.endUsed = std::max(chunk.begUsed, end);
+        chunk.endUsed = outIt.getIndex();
+        if (outIt.getIndex() < sa.getChunks()[ch].end) {
+            outIt.putSymbol(0);
+            sa.setUsedIdx(outIt.getIndex()-1, false);
+        }
     }
 
     return nRepl;
