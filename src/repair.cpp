@@ -341,6 +341,7 @@ RePairComp::refillCache(RePairImpl::CompressData& cpData, U64 maxCache) {
     PairCandSet& pairCands = cpData.pairCands;
     S64& cacheSize = cpData.cacheSize;
 
+    // Decide what to cache
     std::unordered_map<U32, std::vector<U64>> cache;
     S64 newCacheSize = 0;
     U64 minCacheFreq = maxCache;
@@ -356,20 +357,61 @@ RePairComp::refillCache(RePairImpl::CompressData& cpData, U64 maxCache) {
         minCacheFreq = std::min(minCacheFreq, ce.freq);
     }
     std::cout << "refill cache: nElem:" << cache.size() << " minFreq:" << minCacheFreq << std::endl;
+
+    // Process all chunks
+    std::vector<std::vector<std::pair<U32,U64>>> cacheVec(nThreads);
     LookupTable lut(cache);
-    {
-        SymbolArray::iterator it = sa.iter(0);
-        U64 idxX = it.getIndex(); int x = it.getSymbol(); it.moveToNext();
-        U64 idxY = it.getIndex(); int y = it.getSymbol(); it.moveToNext();
-        while (y != -1) {
-            U32 key = (((U16)x) << 16) | (U16)y;
-            std::vector<U64>* vec = lut.lookup(key);
-            if (vec)
-                vec->push_back(idxX);
-            idxX = idxY; x = y;
-            idxY = it.getIndex(); y = it.getSymbol(); it.moveToNext();
-        }
+    ThreadPool<int> pool(nThreads);
+    const int nChunks = sa.getChunks().size();
+    for (int ch = 0; ch < nChunks; ch++) {
+        auto task = [this,&cacheVec,&lut,ch](int workerNo) {
+            std::vector<std::pair<U32,U64>>& cache = cacheVec[workerNo];
+            SymbolArray::iterator it = sa.iterAtChunk(ch);
+            if (it.getSymbol() == -1)
+                it.moveToNext();
+            U64 end = sa.getChunks()[ch].endUsed;
+            U64 idxX = it.getIndex(); int x = it.getSymbol(); it.moveToNext();
+            U64 idxY = it.getIndex(); int y = it.getSymbol(); it.moveToNext();
+            while (idxX < end) {
+                U32 key = (((U16)x) << 16) | (U16)y;
+                if (lut.lookup(key))
+                    cache.push_back(std::make_pair(key, idxX));
+                idxX = idxY; x = y;
+                idxY = it.getIndex(); y = it.getSymbol(); it.moveToNext();
+            }
+            return 0;
+        };
+        pool.addTask(task);
     }
+    int dummy;
+    while (pool.getResult(dummy))
+        ;
+    for (int t = 0; t < nThreads; t++)
+        for (const auto& p : cacheVec[t])
+            lut.lookup(p.first)->push_back(p.second);
+    cacheVec.clear();
+
+    const int nKeys = cache.size();
+    std::vector<U32> keys;
+    keys.reserve(nKeys);
+    for (auto& e : cache)
+        keys.push_back(e.first);
+    const int sortBatchSize = std::max(1, nKeys / nThreads / 2);
+    for (int b = 0; b < nKeys; b += sortBatchSize) {
+        auto task = [&lut,&keys,nKeys,sortBatchSize,b](int threadNo) {
+            int end = std::min(b + sortBatchSize, nKeys);
+            for (int i = b; i < end; i++) {
+                std::vector<U64>& vec = *lut.lookup(keys[i]);
+                std::sort(vec.begin(), vec.end());
+            }
+            return 0;
+        };
+        pool.addTask(task);
+    }
+    while (pool.getResult(dummy))
+        ;
+
+    // Fill in PairCand::indices
     for (auto& e : cache) {
         U32 xy = e.first;
         U16 x = (U16)(xy >> 16);
