@@ -272,8 +272,10 @@ RePairComp::initSymbols(RePairImpl::CompressData& cpData) {
             auto task = [this,&primitiveSyms,ch](int workerNo) {
                 SymbolArray::iterator it = sa.iterAtChunk(ch);
                 U64 end = sa.getChunks()[ch].endUsed;
-                while (it.getIndex() < end)
-                    it.putSymbol(primitiveSyms[it.getSymbol()]);
+                while (it.getIndex() < end) {
+                    sa.setByte(it.getIndex(), primitiveSyms[it.getSymbol()]);
+                    it.moveToNext();
+                }
                 return 0;
             };
             pool.addTask(task);
