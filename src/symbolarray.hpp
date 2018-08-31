@@ -61,6 +61,8 @@ public:
     /** Update the used range within a chunk.
      *  Used for quickly skipping unused parts of a chunk. */
     void setChunkUsedRange(int chunkNo, U64 begUsed, U64 endUsed);
+    /** Update endUsed for a chunk. */
+    void setChunkEnd(int chunkNo, U64 endused);
     void setByte(U64 idx, U8 value);
 
     bool getUsedIdx(U64 idx) const;
@@ -179,6 +181,12 @@ inline void
 SymbolArray::setChunkUsedRange(int chunkNo, U64 begUsed, U64 endUsed) {
     Chunk& c = chunks[chunkNo];
     c.begUsed = begUsed;
+    c.endUsed = endUsed;
+}
+
+inline void
+SymbolArray::setChunkEnd(int chunkNo, U64 endUsed) {
+    Chunk& c = chunks[chunkNo];
     c.endUsed = endUsed;
 }
 
