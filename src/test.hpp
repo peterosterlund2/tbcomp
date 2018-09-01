@@ -23,6 +23,7 @@ private:
     void testSymArray();
     void testSymArrayStraddle();
     void testSymArrayEmptyChunk();
+    void testRePair();
 
     // PosIndex
     void testSwapColors();

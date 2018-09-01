@@ -22,6 +22,7 @@ Test::runTests() {
     testSymArray();
     testSymArrayStraddle();
     testSymArrayEmptyChunk();
+    testRePair();
     testSwapColors();
     testThreadPool();
 }
@@ -334,6 +335,59 @@ Test::testSymArrayEmptyChunk() {
         assert(it.getSymbol() == expected[i]);
         bool ok = it.moveToPrev();
         assert(ok == (i < (nSym-1)));
+    }
+}
+
+static std::vector<int> getSymVec(SymbolArray& sa) {
+    std::vector<int> symVec;
+    SymbolArray::iterator it = sa.iterAtChunk(0);
+    while (true) {
+        int sym = it.getSymbol();
+        assert(sym != -1);
+        symVec.push_back(sym);
+        if (!it.moveToNext())
+            break;
+    }
+    return symVec;
+}
+
+
+void
+Test::testRePair() {
+    {
+        std::vector<U8> data(32, 0);
+        RePairComp comp(data, 2, 65535, 4);
+        SymbolArray& sa = comp.sa;
+        std::vector<int> symVec = getSymVec(sa);
+        assert(symVec.size() == 2);
+    }
+    {
+        std::vector<U8> data(32, 0);
+        RePairComp comp(data, 1, 65535, 4);
+        SymbolArray& sa = comp.sa;
+        std::vector<int> symVec = getSymVec(sa);
+        assert(symVec.size() == 1);
+    }
+    {
+        std::vector<U8> data(32, 0);
+        RePairComp comp(data, 1, 3, 4);
+        SymbolArray& sa = comp.sa;
+        std::vector<int> symVec = getSymVec(sa);
+        assert(symVec.size() == 8);
+    }
+    {
+        std::vector<U8> data;
+        for (int i = 0; i < 4096; i++) {
+            for (int j = 0; j < 128; j++)
+                data.push_back(0);
+            for (int j = 0; j < 128; j++)
+                data.push_back(1);
+        }
+        RePairComp comp(data, 1, 65535, 128);
+        SymbolArray& sa = comp.sa;
+        std::vector<int> symVec = getSymVec(sa);
+        assert(symVec.size() == 1);
+        assert(symVec[0] == 28);
     }
 }
 

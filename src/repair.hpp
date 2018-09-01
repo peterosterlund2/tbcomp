@@ -42,6 +42,7 @@ private:
 /** Compress data using the recursive pairing (re-pair) algorithm.
  * Note that at most 65535 symbols are used. */
 class RePairComp {
+    friend class Test;
 public:
     /** Run the re-pair algorithm. "inData" is overwritten.
      * "inData" must live longer than this object.
@@ -52,6 +53,7 @@ public:
     void toBitBuf(BitBufferWriter& out);
 
 private:
+    RePairComp(std::vector<U8>& inData, int minFreq, int maxSyms, int chunkSize);
     void compress(U64 minFreq, int maxSyms);
     void initSymbols(RePairImpl::CompressData& cpData);
     void pruneCache(RePairImpl::CompressData& cpData, S64 maxSize, U64 maxFreq) const;

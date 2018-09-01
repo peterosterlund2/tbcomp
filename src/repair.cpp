@@ -11,9 +11,12 @@
 #include <cassert>
 #include <iostream>
 
-
 RePairComp::RePairComp(std::vector<U8>& inData, int minFreq, int maxSyms)
-    : sa(inData) {
+    : RePairComp(inData, minFreq, maxSyms, -1) {
+}
+
+RePairComp::RePairComp(std::vector<U8>& inData, int minFreq, int maxSyms, int chunkSize)
+    : sa(inData, chunkSize) {
     std::cout << "nChunks:" << sa.getChunks().size()
               << " chunkSize:" << (sa.getChunks()[0].end - sa.getChunks()[0].beg) << std::endl;
     nThreads = std::thread::hardware_concurrency();
