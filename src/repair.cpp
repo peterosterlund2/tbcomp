@@ -430,16 +430,9 @@ RePairComp::refillCache(RePairImpl::CompressData& cpData, U64 maxCache) {
     std::cout << "refill cache: nElem:" << cache.size() << " cacheSize:" << cacheSize << std::endl;
 }
 
-U64
-RePairComp::replacePairs(int X, int Y, int Z, RePairImpl::DeltaFreq& delta) {
-    std::vector<S64>& deltaFreqAZ = delta.deltaFreqAZ;
-    std::vector<S64>& deltaFreqZB = delta.deltaFreqZB;
-    std::vector<S64>& deltaFreqAX = delta.deltaFreqAX;
-    std::vector<S64>& deltaFreqYB = delta.deltaFreqYB;
-    const int nSym = deltaFreqAZ.size();
-
+std::vector<bool>
+RePairComp::computeSkipFirst(int X, int Y) {
     const int nChunks = sa.getChunks().size();
-
     std::vector<bool> skipFirst(nChunks+1, false);
     if (X == Y) {
         std::vector<U64> prevNumSame(nChunks, 0);
@@ -488,6 +481,18 @@ RePairComp::replacePairs(int X, int Y, int Z, RePairImpl::DeltaFreq& delta) {
             skipFirst[ch] = (prevNumSame[ch] % 2) != 0;
         }
     }
+    return skipFirst;
+}
+
+U64
+RePairComp::replacePairs(int X, int Y, int Z, RePairImpl::DeltaFreq& delta) {
+    std::vector<S64>& deltaFreqAZ = delta.deltaFreqAZ;
+    std::vector<S64>& deltaFreqZB = delta.deltaFreqZB;
+    std::vector<S64>& deltaFreqAX = delta.deltaFreqAX;
+    std::vector<S64>& deltaFreqYB = delta.deltaFreqYB;
+    const int nSym = deltaFreqAZ.size();
+
+    std::vector<bool> skipFirst = computeSkipFirst(X, Y);
 
     struct Result {
         Result(int nSym)
@@ -503,6 +508,7 @@ RePairComp::replacePairs(int X, int Y, int Z, RePairImpl::DeltaFreq& delta) {
 
     std::mutex mutex;
     ThreadPool<Result> pool(nThreads);
+    const int nChunks = sa.getChunks().size();
     for (int ch = 0; ch < nChunks; ch++) {
         auto task = [this,X,Y,Z,nSym,nChunks,&skipFirst,&mutex,ch](int threadNo) {
             Result res(nSym);

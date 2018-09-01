@@ -58,6 +58,7 @@ private:
     void initSymbols(RePairImpl::CompressData& cpData);
     void pruneCache(RePairImpl::CompressData& cpData, S64 maxSize, U64 maxFreq) const;
     void refillCache(RePairImpl::CompressData& cpData, U64 maxCache);
+    std::vector<bool> computeSkipFirst(int X, int Y);
     U64 replacePairs(int X, int Y, int Z, RePairImpl::DeltaFreq& delta);
     U64 replacePairsIdxCache(const std::vector<U64>& indices, int X, int Y, int Z,
                              RePairImpl::DeltaFreq& delta);
