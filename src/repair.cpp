@@ -128,8 +128,6 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
     PairCandSet& pairCands = cpData.pairCands;
     S64& cacheSize = cpData.cacheSize;
 
-    const size_t maxCands = std::max(128*1024, 16*maxSyms); // Heuristic limit
-
     const U64 maxCache = std::max(U64(64*1024*1024), sa.size() / 512);
 
     // Delta frequencies when transforming AXYB -> AZB
@@ -215,6 +213,7 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
                   << " cand:" << pairCands.size() << " cache:" << cacheSize
                   << " compr:" << comprSize << std::endl;
 
+        size_t maxCands = std::max(128*1024, 8*(maxSyms-(int)symbols.size())); // Heuristic limit
         int pruneFreq = -1;
         while (pairCands.size() > maxCands) {
             auto it2 = --pairCands.get<Freq>().end();
