@@ -388,7 +388,7 @@ RePairComp::refillCache(RePairImpl::CompressData& cpData, U64 maxCache) {
         keys.push_back(e.first);
     const int sortBatchSize = std::max(1, nKeys / nThreads / 2);
     for (int b = 0; b < nKeys; b += sortBatchSize) {
-        auto task = [&lut,&keys,nKeys,sortBatchSize,b](int threadNo) {
+        auto task = [&lut,&keys,nKeys,sortBatchSize,b](int workerNo) {
             int end = std::min(b + sortBatchSize, nKeys);
             for (int i = b; i < end; i++) {
                 std::vector<U64>& vec = *lut.lookup(keys[i]);
@@ -456,7 +456,7 @@ RePairComp::replacePairs(int X, int Y, int Z, RePairImpl::DeltaFreq& delta) {
     ThreadPool<Result> pool(nThreads);
     const int nChunks = sa.getChunks().size();
     for (int ch = 0; ch < nChunks; ch++) {
-        auto task = [this,X,Y,Z,nSym,nChunks,&skipFirst,&mutex,ch](int threadNo) {
+        auto task = [this,X,Y,Z,nSym,nChunks,&skipFirst,&mutex,ch](int workerNo) {
             Result res(nSym);
 
             SymbolArray::iterator inIt = sa.iterAtChunk(ch);
@@ -585,7 +585,7 @@ RePairComp::computeSkipFirst(int X, int Y) {
         std::vector<U8> prevAllSame(nChunks, false); // vector<bool> not thread safe
         ThreadPool<int> pool(nThreads);
         for (int ch = 1; ch < nChunks; ch++) {
-            auto task = [this,X,&prevNumSame,&prevAllSame,ch](int threadNo) {
+            auto task = [this,X,&prevNumSame,&prevAllSame,ch](int workerNo) {
                 SymbolArray::iterator it = sa.iterAtChunk(ch);
                 if (it.getSymbol() == -1)
                     it.moveToNext();
