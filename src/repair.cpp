@@ -326,22 +326,6 @@ RePairComp::initSymbols(RePairImpl::CompressData& cpData) {
 }
 
 void
-RePairComp::pruneCache(RePairImpl::CompressData& cpData, S64 maxSize, U64 maxFreq) const {
-    using namespace RePairImpl;
-    PairCandSet& pairCands = cpData.pairCands;
-    S64& cacheSize = cpData.cacheSize;
-
-    while (cacheSize > maxSize) {
-        auto it2 = --pairCands.get<Cache>().end();
-        if (it2->indices.empty() || it2->freq >= maxFreq)
-            break;
-        cacheSize -= it2->indices.size();
-        pairCands.get<Cache>().modify(it2, [](PairCand& pc){ pc.indices.clear();
-                                                             pc.indices.shrink_to_fit(); });
-    }
-}
-
-void
 RePairComp::refillCache(RePairImpl::CompressData& cpData, U64 maxCache) {
     using namespace RePairImpl;
     PairCandSet& pairCands = cpData.pairCands;
@@ -430,58 +414,20 @@ RePairComp::refillCache(RePairImpl::CompressData& cpData, U64 maxCache) {
     std::cout << "refill cache: nElem:" << cache.size() << " cacheSize:" << cacheSize << std::endl;
 }
 
-std::vector<bool>
-RePairComp::computeSkipFirst(int X, int Y) {
-    const int nChunks = sa.getChunks().size();
-    std::vector<bool> skipFirst(nChunks+1, false);
-    if (X == Y) {
-        std::vector<U64> prevNumSame(nChunks, 0);
-        std::vector<U8> prevAllSame(nChunks, false); // vector<bool> not thread safe
-        ThreadPool<int> pool(nThreads);
-        for (int ch = 1; ch < nChunks; ch++) {
-            auto task = [this,X,&prevNumSame,&prevAllSame,ch](int threadNo) {
-                SymbolArray::iterator it = sa.iterAtChunk(ch);
-                if (it.getSymbol() == -1)
-                    it.moveToNext();
-                SymbolArray::iterator it2(it);
-                int s1 = it.getSymbol(); it.moveToNext();
-                int s2 = it.getSymbol();
-                if (s1 == X && s2 == X) {
-                    SymbolArray::iterator prevChunkIter = sa.iterAtChunk(ch-1);
-                    if (prevChunkIter.getSymbol() == -1)
-                        prevChunkIter.moveToNext();
-                    U64 numSame = 0;
-                    bool allSame = true;
-                    U64 prevChunkStart = prevChunkIter.getIndex();
-                    if (sa.getChunkIdx(prevChunkStart) == ch - 1) {
-                        while (it2.getIndex() != prevChunkStart) {
-                            if (!it2.moveToPrev())
-                                assert(false);
-                            if (it2.getSymbol() == X) {
-                                numSame++;
-                            } else {
-                                allSame = false;
-                                break;
-                            }
-                        }
-                    }
-                    prevNumSame[ch] = numSame;
-                    prevAllSame[ch] = allSame;
-                }
-                return 0;
-            };
-            pool.addTask(task);
-        }
-        int dummy;
-        while (pool.getResult(dummy))
-            ;
-        for (int ch = 1; ch < nChunks; ch++) {
-            if (prevAllSame[ch])
-                prevNumSame[ch] += prevNumSame[ch-1];
-            skipFirst[ch] = (prevNumSame[ch] % 2) != 0;
-        }
+void
+RePairComp::pruneCache(RePairImpl::CompressData& cpData, S64 maxSize, U64 maxFreq) const {
+    using namespace RePairImpl;
+    PairCandSet& pairCands = cpData.pairCands;
+    S64& cacheSize = cpData.cacheSize;
+
+    while (cacheSize > maxSize) {
+        auto it2 = --pairCands.get<Cache>().end();
+        if (it2->indices.empty() || it2->freq >= maxFreq)
+            break;
+        cacheSize -= it2->indices.size();
+        pairCands.get<Cache>().modify(it2, [](PairCand& pc){ pc.indices.clear();
+                                                             pc.indices.shrink_to_fit(); });
     }
-    return skipFirst;
 }
 
 U64
@@ -628,6 +574,60 @@ RePairComp::replacePairs(int X, int Y, int Z, RePairImpl::DeltaFreq& delta) {
     }
 
     return nRepl;
+}
+
+std::vector<bool>
+RePairComp::computeSkipFirst(int X, int Y) {
+    const int nChunks = sa.getChunks().size();
+    std::vector<bool> skipFirst(nChunks+1, false);
+    if (X == Y) {
+        std::vector<U64> prevNumSame(nChunks, 0);
+        std::vector<U8> prevAllSame(nChunks, false); // vector<bool> not thread safe
+        ThreadPool<int> pool(nThreads);
+        for (int ch = 1; ch < nChunks; ch++) {
+            auto task = [this,X,&prevNumSame,&prevAllSame,ch](int threadNo) {
+                SymbolArray::iterator it = sa.iterAtChunk(ch);
+                if (it.getSymbol() == -1)
+                    it.moveToNext();
+                SymbolArray::iterator it2(it);
+                int s1 = it.getSymbol(); it.moveToNext();
+                int s2 = it.getSymbol();
+                if (s1 == X && s2 == X) {
+                    SymbolArray::iterator prevChunkIter = sa.iterAtChunk(ch-1);
+                    if (prevChunkIter.getSymbol() == -1)
+                        prevChunkIter.moveToNext();
+                    U64 numSame = 0;
+                    bool allSame = true;
+                    U64 prevChunkStart = prevChunkIter.getIndex();
+                    if (sa.getChunkIdx(prevChunkStart) == ch - 1) {
+                        while (it2.getIndex() != prevChunkStart) {
+                            if (!it2.moveToPrev())
+                                assert(false);
+                            if (it2.getSymbol() == X) {
+                                numSame++;
+                            } else {
+                                allSame = false;
+                                break;
+                            }
+                        }
+                    }
+                    prevNumSame[ch] = numSame;
+                    prevAllSame[ch] = allSame;
+                }
+                return 0;
+            };
+            pool.addTask(task);
+        }
+        int dummy;
+        while (pool.getResult(dummy))
+            ;
+        for (int ch = 1; ch < nChunks; ch++) {
+            if (prevAllSame[ch])
+                prevNumSame[ch] += prevNumSame[ch-1];
+            skipFirst[ch] = (prevNumSame[ch] % 2) != 0;
+        }
+    }
+    return skipFirst;
 }
 
 U64
