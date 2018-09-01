@@ -234,7 +234,7 @@ Test::testSymArray() {
     it = sa.iter(0);
     it.putSymbol(7);
     it.putSymbol(300);
-    sa.setChunkUsedRange(0, 0, 3);
+    sa.setChunkEnd(0, 3);
     sa.iter(5).putSymbol(400);
     sa.setChunkUsedRange(1, 5, 7);
     it = sa.iter(5);
@@ -256,8 +256,11 @@ Test::testSymArray() {
     sa.setChunkUsedRange(0, 0, 4);
     sa.setChunkUsedRange(1, 4, 8);
     it = sa.iter(0);
-    for (int i = 0; i < 8; i++)
-        it.putSymbol(i+1);
+    for (int i = 0; i < 8; i++) {
+        U64 idx = it.getIndex();
+        it.putSymbol(0);
+        sa.setByte(idx, i+1);
+    }
     sa.combineSymbol(3, 4, 17);
     assert(sa.iter(3).getSymbol() == 17);
     assert(sa.iter(4).getSymbol() == -1);
