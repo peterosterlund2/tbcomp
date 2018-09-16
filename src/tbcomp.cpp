@@ -385,19 +385,18 @@ static void wdlDump(const std::string& tbType) {
     std::cout << "size:" << size << std::endl;
 
     std::vector<U8> data(size);
-    ThreadPool<int> pool(std::thread::hardware_concurrency());
+    ThreadPool<std::pair<int,int>> pool(std::thread::hardware_concurrency());
     const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
     int nTasks = 0;
     for (U64 b = 0; b < size; b += batchSize) {
         auto task = [&posIdx,&data,size,batchSize,b](int workerNo) {
+            int bestWtm = -2;
+            int bestBtm = 2;
             U64 end = std::min(b + batchSize, size);
             Position pos;
             for (U64 idx = b; idx < end; idx++) {
-                { // Clear position
-                    U64 m = pos.occupiedBB();
-                    while (m)
-                        pos.clearPiece(BitBoard::extractSquare(m));
-                }
+                for (U64 m = pos.occupiedBB(); m; ) // Clear position
+                    pos.clearPiece(BitBoard::extractSquare(m));
                 bool valid = posIdx.index2Pos(idx, pos);
                 if (valid && MoveGen::canTakeKing(pos))
                     valid = false;
@@ -412,47 +411,94 @@ static void wdlDump(const std::string& tbType) {
                         val = 4; // Game end
                     } else {
                         int success;
-                        UndoInfo ui;
-                        bool winCapt = false;
-                        const bool inCheck = MoveGen::inCheck(pos);
-                        for (int i = 0; i < moves.size; i++) {
-                            const Move& m = moves[i];
-                            if ((pos.getPiece(m.to()) == Piece::EMPTY) ||
-                                !MoveGen::isLegal(pos, m, inCheck))
-                                continue;
-                            pos.makeMove(m, ui);
-                            int wdl = Syzygy::probe_wdl(pos, &success);
-                            if (!success)
-                                throw ChessParseError("RTB probe failed, pos:" + TextIO::toFEN(pos));
-                            pos.unMakeMove(m, ui);
-                            if (wdl == -2) {
-                                winCapt = true;
-                                break;
-                            }
-                        }
-                        if (winCapt) {
-                            val = 5;
+                        int wdl = Syzygy::probe_wdl(pos, &success);
+                        if (!success)
+                            throw ChessParseError("RTB probe failed, pos:" + TextIO::toFEN(pos));
+                        if (pos.isWhiteMove()) {
+                            bestWtm = std::max(bestWtm, wdl);
                         } else {
-                            int wdl = Syzygy::probe_wdl(pos, &success);
-                            if (!success)
-                                throw ChessParseError("RTB probe failed, pos:" + TextIO::toFEN(pos));
-                            if (!pos.isWhiteMove())
-                                wdl = -wdl;
-                            val = wdl;
+                            wdl = -wdl;
+                            bestBtm = std::min(bestBtm, wdl);
                         }
+                        val = wdl;
                     }
                 }
                 data[idx] = (U8)val;
             }
-            return 0;
+            return std::make_pair(bestWtm, bestBtm);
         };
         pool.addTask(task);
         nTasks++;
     }
     std::cout << "nTasks:" << nTasks << std::endl;
+    int bestWtm = -2;
+    int bestBtm = 2;
     for (int i = 0; i < nTasks; i++) {
-        int res;
+        std::pair<int,int> res;
         pool.getResult(res);
+        bestWtm = std::max(bestWtm, res.first);
+        bestBtm = std::min(bestBtm, res.second);
+        if ((i+1) * 80 / nTasks > i * 80 / nTasks)
+            std::cout << "." << std::flush;
+    }
+    std::cout << std::endl;
+    std::cout << "bestWtm:" << bestWtm << " bestBtm:" << bestBtm << std::endl;
+
+    for (U64 b = 0; b < size; b += batchSize) {
+        auto task = [&posIdx,&data,size,batchSize,bestWtm,bestBtm,b](int workerNo) {
+            U64 end = std::min(b + batchSize, size);
+            Position pos;
+            for (U64 idx = b; idx < end; idx++) {
+                if (data[idx] == 3 || data[idx] == 4)
+                    continue;
+                for (U64 m = pos.occupiedBB(); m; ) // Clear position
+                    pos.clearPiece(BitBoard::extractSquare(m));
+                posIdx.index2Pos(idx, pos);
+                int success;
+                UndoInfo ui;
+                bool optCapt = false;
+                const bool inCheck = MoveGen::inCheck(pos);
+                MoveList moves;
+                if (inCheck)
+                    MoveGen::checkEvasions(pos, moves);
+                else
+                    MoveGen::pseudoLegalMoves(pos, moves);
+                MoveGen::removeIllegal(pos, moves);
+                for (int i = 0; i < moves.size; i++) {
+                    const Move& m = moves[i];
+                    if ((pos.getPiece(m.to()) == Piece::EMPTY) ||
+                            !MoveGen::isLegal(pos, m, inCheck))
+                        continue;
+                    pos.makeMove(m, ui);
+                    int wdl = -Syzygy::probe_wdl(pos, &success);
+                    if (!success)
+                        throw ChessParseError("RTB probe failed, pos:" + TextIO::toFEN(pos));
+                    pos.unMakeMove(m, ui);
+                    if (pos.isWhiteMove()) {
+                        if (wdl == bestWtm) {
+                            optCapt = true;
+                            break;
+                        }
+                    } else {
+                        wdl = -wdl;
+                        if (wdl == bestBtm) {
+                            optCapt = true;
+                            break;
+                        }
+                    }
+                }
+                if (optCapt)
+                    data[idx] = 5;
+            }
+            return std::pair<int,int>();
+        };
+        pool.addTask(task);
+    }
+    for (int i = 0; i < nTasks; i++) {
+        std::pair<int,int> res;
+        pool.getResult(res);
+        bestWtm = std::max(bestWtm, res.first);
+        bestBtm = std::min(bestBtm, res.second);
         if ((i+1) * 80 / nTasks > i * 80 / nTasks)
             std::cout << "." << std::flush;
     }
@@ -464,7 +510,7 @@ static void wdlDump(const std::string& tbType) {
         cnt[val+2]++;
     }
 
-    std::cout << "header: -2 -1 0 1 2 illegal gameEnd winCapt" << std::endl;
+    std::cout << "header: -2 -1 0 1 2 illegal gameEnd optCapt" << std::endl;
     std::cout << "abs: ";
     int mostFreq = 0;
     for (int i = 0; i < 5; i++) {
@@ -481,7 +527,7 @@ static void wdlDump(const std::string& tbType) {
 
     std::cout << "invalid:" << (cnt[5] / (double)size) << std::endl;
     std::cout << "gameEnd:" << (cnt[6] / (double)size) << std::endl;
-    std::cout << "winCapt:" << (cnt[7] / (double)size) << std::endl;
+    std::cout << "optCapt:" << (cnt[7] / (double)size) << std::endl;
 
     for (U64 idx = 0; idx < size; idx++)
         if (data[idx] > 2 && data[idx] < 128)
