@@ -114,10 +114,20 @@ void WdlCompress::initializeData(std::vector<U8>& data) {
                 if (!valid) {
                     val = 3; // Invalid
                 } else {
+                    const bool inCheck = MoveGen::inCheck(pos);
                     MoveList moves;
-                    MoveGen::pseudoLegalMoves(pos, moves);
-                    MoveGen::removeIllegal(pos, moves);
-                    if (moves.size == 0) {
+                    if (inCheck)
+                        MoveGen::checkEvasions(pos, moves);
+                    else
+                        MoveGen::pseudoLegalMoves(pos, moves);
+                    bool hasLegalMoves = false;
+                    for (int i = 0; i < moves.size; i++) {
+                        if (MoveGen::isLegal(pos, moves[i], inCheck)) {
+                            hasLegalMoves = true;
+                            break;
+                        }
+                    }
+                    if (!hasLegalMoves) {
                         val = 4; // Game end
                     } else {
                         int success;
@@ -180,7 +190,6 @@ void WdlCompress::computeOptimalCaptures(std::vector<U8>& data) const {
                     MoveGen::checkEvasions(pos, moves);
                 else
                     MoveGen::pseudoLegalMoves(pos, moves);
-                MoveGen::removeIllegal(pos, moves);
                 for (int i = 0; i < moves.size; i++) {
                     const Move& m = moves[i];
                     if ((pos.getPiece(m.to()) == Piece::EMPTY) ||
