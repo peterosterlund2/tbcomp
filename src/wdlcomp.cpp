@@ -56,6 +56,7 @@ getPieces(const std::string& tbType, std::vector<int>& pieces) {
 }
 
 WdlCompress::WdlCompress(const std::string& tbType) {
+    nThreads = std::thread::hardware_concurrency();
     ComputerPlayer::initEngine();
     setupTB();
 
@@ -81,8 +82,21 @@ void WdlCompress::wdlDump(const std::string& outFile) {
     const U64 size = posIdx.tbSize();
     std::vector<U8> data(size);
 
-    ThreadPool<std::pair<int,int>> pool(std::thread::hardware_concurrency());
+    initializeData(data);
+    computeOptimalCaptures(data);
+
+    std::array<U64,8> cnt{};
+    int mostFreq = computeStatistics(data, cnt);
+    replaceDontCares(data, mostFreq);
+
+    writeFile(data, outFile);
+}
+
+void WdlCompress::initializeData(std::vector<U8>& data) {
+    PosIndex& posIdx = *posIndex;
+    const U64 size = posIdx.tbSize();
     const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
+    ThreadPool<std::pair<int,int>> pool(nThreads);
     int nTasks = 0;
     for (U64 b = 0; b < size; b += batchSize) {
         auto task = [&posIdx,&data,size,batchSize,b](int workerNo) {
@@ -127,8 +141,8 @@ void WdlCompress::wdlDump(const std::string& outFile) {
         nTasks++;
     }
     std::cout << "nTasks:" << nTasks << std::endl;
-    int bestWtm = -2;
-    int bestBtm = 2;
+    bestWtm = -2;
+    bestBtm = 2;
     for (int i = 0; i < nTasks; i++) {
         std::pair<int,int> res;
         pool.getResult(res);
@@ -139,9 +153,16 @@ void WdlCompress::wdlDump(const std::string& outFile) {
     }
     std::cout << std::endl;
     std::cout << "bestWtm:" << bestWtm << " bestBtm:" << bestBtm << std::endl;
+}
 
+void WdlCompress::computeOptimalCaptures(std::vector<U8>& data) const {
+    PosIndex& posIdx = *posIndex;
+    const U64 size = posIdx.tbSize();
+    const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
+    ThreadPool<int> pool(nThreads);
+    int nTasks = 0;
     for (U64 b = 0; b < size; b += batchSize) {
-        auto task = [&posIdx,&data,size,batchSize,bestWtm,bestBtm,b](int workerNo) {
+        auto task = [this,&posIdx,&data,size,batchSize,b](int workerNo) {
             U64 end = std::min(b + batchSize, size);
             Position pos;
             for (U64 idx = b; idx < end; idx++) {
@@ -186,21 +207,23 @@ void WdlCompress::wdlDump(const std::string& outFile) {
                 if (optCapt)
                     data[idx] = 5;
             }
-            return std::pair<int,int>();
+            return 0;
         };
         pool.addTask(task);
+        nTasks++;
     }
     for (int i = 0; i < nTasks; i++) {
-        std::pair<int,int> res;
-        pool.getResult(res);
-        bestWtm = std::max(bestWtm, res.first);
-        bestBtm = std::min(bestBtm, res.second);
+        int dummy;
+        pool.getResult(dummy);
         if ((i+1) * 80 / nTasks > i * 80 / nTasks)
             std::cout << "." << std::flush;
     }
     std::cout << std::endl;
+}
 
-    std::array<U64,8> cnt{};
+int WdlCompress::computeStatistics(const std::vector<U8>& data,
+                                   std::array<U64,8>& cnt) const {
+    const U64 size = data.size();
     for (U64 idx = 0; idx < size; idx++) {
         int val = (S8)data[idx];
         cnt[val+2]++;
@@ -225,10 +248,18 @@ void WdlCompress::wdlDump(const std::string& outFile) {
     std::cout << "gameEnd:" << (cnt[6] / (double)size) << std::endl;
     std::cout << "optCapt:" << (cnt[7] / (double)size) << std::endl;
 
+    return mostFreq;
+}
+
+void WdlCompress::replaceDontCares(std::vector<U8>& data, int mostFreq) {
+    const U64 size = data.size();
     for (U64 idx = 0; idx < size; idx++)
         if (data[idx] > 2 && data[idx] < 128)
             data[idx] = (U8)(mostFreq-2);
+}
 
+void WdlCompress::writeFile(const std::vector<U8>& data,
+                            const std::string& outFile) const {
     std::ofstream outF(outFile);
     outF.write((const char*)data.data(), data.size());
 }
