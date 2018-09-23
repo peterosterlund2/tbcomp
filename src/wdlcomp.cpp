@@ -224,10 +224,24 @@ void WdlCompress::computeOptimalCaptures(std::vector<U8>& data) const {
 int WdlCompress::computeStatistics(const std::vector<U8>& data,
                                    std::array<U64,8>& cnt) const {
     const U64 size = data.size();
-    for (U64 idx = 0; idx < size; idx++) {
-        int val = (S8)data[idx];
-        cnt[val+2]++;
+    const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
+    ThreadPool<std::array<U64,8>> pool(nThreads);
+    for (U64 b = 0; b < size; b += batchSize) {
+        auto task = [&data,size,batchSize,b](int workerNo) {
+            std::array<U64,8> cnt{};
+            U64 end = std::min(b + batchSize, size);
+            for (U64 idx = b; idx < end; idx++) {
+                int val = (S8)data[idx];
+                cnt[val+2]++;
+            }
+            return cnt;
+        };
+        pool.addTask(task);
     }
+    std::array<U64,8> res;
+    while (pool.getResult(res))
+        for (int i = 0; i < 8; i++)
+            cnt[i] += res[i];
 
     std::cout << "header: -2 -1 0 1 2 illegal gameEnd optCapt" << std::endl;
     std::cout << "abs: ";
@@ -253,9 +267,22 @@ int WdlCompress::computeStatistics(const std::vector<U8>& data,
 
 void WdlCompress::replaceDontCares(std::vector<U8>& data, int mostFreq) {
     const U64 size = data.size();
-    for (U64 idx = 0; idx < size; idx++)
-        if (data[idx] > 2 && data[idx] < 128)
-            data[idx] = (U8)(mostFreq-2);
+    const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
+    ThreadPool<int> pool(nThreads);
+    for (U64 b = 0; b < size; b += batchSize) {
+        auto task = [&data,mostFreq,size,batchSize,b](int workerNo) {
+            U64 end = std::min(b + batchSize, size);
+            for (U64 idx = b; idx < end; idx++) {
+                if (data[idx] > 2 && data[idx] < 128)
+                    data[idx] = (U8)(mostFreq-2);
+            }
+            return 0;
+        };
+        pool.addTask(task);
+    }
+    int dummy;
+    while (pool.getResult(dummy))
+        ;
 }
 
 void WdlCompress::writeFile(const std::vector<U8>& data,
