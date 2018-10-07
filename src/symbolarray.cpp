@@ -1,10 +1,8 @@
 #include "symbolarray.hpp"
 
 SymbolArray::SymbolArray(std::vector<U8>& data, int chSize)
-    : data(data) {
+    : data(data), usedIdx(data.size(), true) {
     U64 size = data.size();
-    usedIdx.assign((size+1 + 63) / 64, ~(0ULL));
-
     if (chSize == -1) {
         chunkSize = 1ULL << 20;
         while ((size + chunkSize - 1) / chunkSize > 1024)

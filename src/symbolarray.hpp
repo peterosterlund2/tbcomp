@@ -1,7 +1,7 @@
 #ifndef SYMBOLARRAY_HPP_
 #define SYMBOLARRAY_HPP_
 
-#include "util/util.hpp"
+#include "bitarray.hpp"
 
 
 /** Represents an array of symbols. Initial symbols are 1 byte long.
@@ -78,8 +78,8 @@ private:
      * If the bit is 1 and the next bit is 1, the symbol is data[i]
      * If the bit is 1 and the next bit is 0, the symbol is data[i]+256*data[i+1]
      */
-    std::vector<U64> usedIdx; // 1 bit per element in data[]
-    U64 chunkSize;            // Common (end-beg) value (except for last chunk)
+    BitArray usedIdx;     // 1 bit per element in data[]
+    U64 chunkSize;        // Common (end-beg) value (except for last chunk)
 
     std::vector<Chunk> chunks;
 };
@@ -197,15 +197,12 @@ SymbolArray::setByte(U64 idx, U8 value) {
 
 inline bool
 SymbolArray::getUsedIdx(U64 idx) const {
-    return usedIdx[idx/64] & (1ULL << (idx%64));
+    return usedIdx.get(idx);
 }
 
 inline void
 SymbolArray::setUsedIdx(U64 idx, bool val) {
-    if (val)
-        usedIdx[idx/64] |= 1ULL << (idx%64);
-    else
-        usedIdx[idx/64] &= ~(1ULL << (idx%64));
+    usedIdx.set(idx, val);
 }
 
 inline void
