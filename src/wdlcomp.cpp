@@ -18,7 +18,8 @@ setupTB() {
                             "/home/petero/chess/rtb/dtz:"
                             "/home/petero/chess/rtb/6wdl:"
                             "/home/petero/chess/rtb/6dtz:"
-                            "/home/petero/chess/rtb/7men");
+                            "/home/petero/chess/rtb/7wdl:"
+                            "/home/petero/chess/rtb/7dtz");
 }
 
 static void
