@@ -2,9 +2,10 @@
 #define WDLCOMP_HPP_
 
 #include "posindex.hpp"
-
 #include <string>
 #include <memory>
+
+class BitArray;
 
 
 class WdlCompress {
@@ -17,7 +18,7 @@ private:
     void initializeData(std::vector<U8>& data);
     void computeOptimalCaptures(std::vector<U8>& data) const;
     int computeStatistics(const std::vector<U8>& data, std::array<U64,8>& cnt) const;
-    void replaceDontCares(std::vector<U8>& data, int mostFreq);
+    void replaceDontCares(std::vector<U8>& data, BitArray& active, int mostFreq);
     void writeFile(const std::vector<U8>& data, const std::string& outFile) const;
 
     int nThreads;

@@ -1,4 +1,7 @@
 #include "wdlcomp.hpp"
+#include "decisiontree.hpp"
+#include "wdlpredicate.hpp"
+#include "bitarray.hpp"
 #include "chessParseError.hpp"
 #include "syzygy/rtb-probe.hpp"
 #include "parameters.hpp"
@@ -89,7 +92,12 @@ void WdlCompress::wdlDump(const std::string& outFile) {
 
     std::array<U64,8> cnt{};
     int mostFreq = computeStatistics(data, cnt);
-    replaceDontCares(data, mostFreq);
+    BitArray active(data.size(), true);
+    replaceDontCares(data, active, mostFreq);
+
+    WDLPredicateFactory factory;
+    DecisionTree dt(factory, posIdx, data, active);
+    dt.computeTree(10, 1);
 
     writeFile(data, outFile);
 }
@@ -276,16 +284,19 @@ int WdlCompress::computeStatistics(const std::vector<U8>& data,
     return mostFreq;
 }
 
-void WdlCompress::replaceDontCares(std::vector<U8>& data, int mostFreq) {
+void WdlCompress::replaceDontCares(std::vector<U8>& data, BitArray& active,
+                                   int mostFreq) {
     const U64 size = data.size();
-    const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
+    const U64 batchSize = std::max((U64)128*1024, ((size + 1023) / 1024) & ~63);
     ThreadPool<int> pool(nThreads);
     for (U64 b = 0; b < size; b += batchSize) {
-        auto task = [&data,mostFreq,size,batchSize,b](int workerNo) {
+        auto task = [&data,&active,mostFreq,size,batchSize,b](int workerNo) {
             U64 end = std::min(b + batchSize, size);
             for (U64 idx = b; idx < end; idx++) {
-                if (data[idx] > 2 && data[idx] < 128)
+                if (data[idx] > 2 && data[idx] < 128) {
                     data[idx] = (U8)(mostFreq-2);
+                    active.set(idx, false);
+                }
             }
             return 0;
         };
