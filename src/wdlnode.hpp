@@ -94,7 +94,13 @@ public:
 
 class WDLEncoderNode : public DT::EncoderNode {
 public:
+    WDLEncoderNode(const WDLStats& stats);
+
+    int encodeValue(const Position& pos, int value) const override;
     std::unique_ptr<DT::StatsNode> getStats() const override;
+    std::string describe(int indentLevel) const override;
+
+    std::array<int, 5> encTable;
 };
 
 

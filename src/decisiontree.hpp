@@ -34,6 +34,9 @@ private:
      *  @return True if an MultiPredicate was created. */
     bool selectBestPreds(bool createNewStatsCollector);
 
+    /** Replace StatsNode with EncoderNode. */
+    void makeEncoderTree();
+
     DT::NodeFactory& nodeFactory;
     const PosIndex& posIdx;
     std::vector<U8>& data;

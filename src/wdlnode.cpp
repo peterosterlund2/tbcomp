@@ -15,15 +15,16 @@ WDLStats::entropy() const {
 
 std::string
 WDLStats::describe() const {
-    std::array<double,5> cnt;
+    const int N = 5;
+    std::array<double,N> cnt;
     double tot = 0.0;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < N; i++) {
         double tmp = count[i];
         cnt[i] = tmp;
         tot += tmp;
     }
     if (tot > 0) {
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < N; i++) {
             cnt[i] /= tot;
             cnt[i] = std::min(floor(cnt[i] * 100), 99.0);
         }
@@ -32,7 +33,7 @@ WDLStats::describe() const {
     std::stringstream ss;
     ss << std::scientific << std::setprecision(2) << tot;
     ss << " [";
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < N; i++) {
         if (i > 0) ss << ' ';
 //        ss << std::setw(2) << std::setfill('0') << (int)cnt[i];
         ss << count[i];
@@ -40,10 +41,11 @@ WDLStats::describe() const {
     ss << "] " << std::setfill(' ');
 
     std::vector<std::pair<U64,int>> srt;
-    for (int i = 0; i < 5; i++)
+    srt.reserve(N);
+    for (int i = 0; i < N; i++)
         srt.emplace_back(~0ULL - count[i], i);
     std::sort(srt.begin(), srt.end());
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < N; i++)
         ss << srt[i].second;
 
     ss << ' ' << entropy();
@@ -82,8 +84,7 @@ WDLStatsNode::isEmpty() const {
 
 std::unique_ptr<DT::EncoderNode>
 WDLStatsNode::getEncoder() {
-    // FIXME!!
-    return nullptr;
+    return make_unique<WDLEncoderNode>(stats);
 }
 
 // ------------------------------------------------------------
@@ -107,7 +108,35 @@ WDLStatsCollectorNode::getBest() const {
     return best;
 }
 
+// ------------------------------------------------------------
+
+WDLEncoderNode::WDLEncoderNode(const WDLStats& stats) {
+    const int N = stats.count.size();
+    std::vector<std::pair<U64,int>> srt;
+    srt.reserve(N);
+    for (int i = 0; i < N; i++)
+        srt.emplace_back(~0ULL - stats.count[i], i);
+    std::sort(srt.begin(), srt.end());
+    for (int i = 0; i < N; i++)
+        encTable[srt[i].second] = i;
+}
+
+int
+WDLEncoderNode::encodeValue(const Position& pos, int value) const {
+    return encTable[value];
+}
+
 std::unique_ptr<DT::StatsNode>
 WDLEncoderNode::getStats() const {
     return make_unique<WDLStatsNode>(WDLStats{});
+}
+
+std::string
+WDLEncoderNode::describe(int indentLevel) const {
+    std::stringstream ss;
+    ss << std::string(indentLevel*2, ' ');
+    for (int v : encTable)
+        ss << v;
+    ss << '\n';
+    return ss.str();
 }

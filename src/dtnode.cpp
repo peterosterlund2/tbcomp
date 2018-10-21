@@ -4,9 +4,22 @@
 
 namespace DT {
 
+void
+Visitor::visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner) {
+    node.left->accept(*this, node.left);
+    node.right->accept(*this, node.right);
+}
+
+// ------------------------------------------------------------
+
 bool
 PredicateNode::applyData(const Position& pos, int value) {
     return (pred->eval(pos) ? right : left)->applyData(pos, value);
+}
+
+int
+PredicateNode::encodeValue(const Position& pos, int value) const {
+    return (pred->eval(pos) ? right : left)->encodeValue(pos, value);
 }
 
 double
@@ -20,6 +33,11 @@ PredicateNode::getStats() const {
     std::unique_ptr<StatsNode> s2 = right->getStats();
     s1->addStats(s2.get());
     return std::move(s1);
+}
+
+void
+PredicateNode::accept(Visitor& visitor, std::unique_ptr<Node>& owner) {
+    visitor.visit(*this, owner);
 }
 
 std::string
@@ -55,7 +73,24 @@ StatsNode::applyData(const Position& pos, int value) {
     return false;
 }
 
+int
+StatsNode::encodeValue(const Position& pos, int value) const {
+    assert(false);
+    return 0;
+}
+
+void
+StatsNode::accept(Visitor& visitor, std::unique_ptr<Node>& owner) {
+    visitor.visit(*this, owner);
+}
+
 // ------------------------------------------------------------
+
+int
+StatsCollectorNode::encodeValue(const Position& pos, int value) const {
+    assert(false);
+    return 0;
+}
 
 double
 StatsCollectorNode::entropy() const {
@@ -66,6 +101,11 @@ StatsCollectorNode::entropy() const {
 std::unique_ptr<StatsNode>
 StatsCollectorNode::getStats() const {
     return getBest()->getStats();
+}
+
+void
+StatsCollectorNode::accept(Visitor& visitor, std::unique_ptr<Node>& owner) {
+    visitor.visit(*this, owner);
 }
 
 std::string
@@ -85,6 +125,11 @@ bool
 EncoderNode::applyData(const Position& pos, int value) {
     assert(false);
     return false;
+}
+
+void
+EncoderNode::accept(Visitor& visitor, std::unique_ptr<Node>& owner) {
+    visitor.visit(*this, owner);
 }
 
 

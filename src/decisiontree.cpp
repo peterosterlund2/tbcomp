@@ -2,7 +2,6 @@
 #include "bitarray.hpp"
 #include "posindex.hpp"
 #include "position.hpp"
-#include <functional>
 #include <cassert>
 
 
@@ -24,6 +23,10 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
             break;
     }
     std::cout << "entropy:" << root->entropy() << std::endl;
+
+    makeEncoderTree();
+    std::cout << '\n' << root->describe(0) << std::flush;
+
 }
 
 void
@@ -46,21 +49,14 @@ DecisionTree::updateStats() {
 
 bool
 DecisionTree::selectBestPreds(bool createNewStatsCollector) {
-    bool anyStatsCollectorCreated = false;
-    std::vector<std::reference_wrapper<std::unique_ptr<DT::Node>>> stack;
-    stack.push_back(root);
-    while (!stack.empty()) {
-        std::unique_ptr<DT::Node>& node = stack.back().get();
-        stack.pop_back();
-        DT::PredicateNode* predNode = dynamic_cast<DT::PredicateNode*>(node.get());
-        if (predNode) {
-            stack.push_back(predNode->right);
-            stack.push_back(predNode->left);
-        } else if (createNewStatsCollector) {
-            auto sCollNode = dynamic_cast<DT::StatsCollectorNode*>(node.get());
-            if (sCollNode) {
-                node = sCollNode->getBest();
-                predNode = dynamic_cast<DT::PredicateNode*>(node.get());
+    class Visitor : public DT::Visitor {
+    public:
+        Visitor(bool createNewStatsCollector, DT::NodeFactory& nodeFactory) :
+            createNewStatsCollector(createNewStatsCollector), nodeFactory(nodeFactory) {}
+        void visit(DT::StatsCollectorNode& node, std::unique_ptr<DT::Node>& owner) override {
+            if (createNewStatsCollector) {
+                owner = node.getBest();
+                DT::PredicateNode* predNode = dynamic_cast<DT::PredicateNode*>(owner.get());
                 if (predNode) {
                     if (predNode->left->entropy() > 0) {
                         predNode->left = nodeFactory.makeStatsCollector();
@@ -73,8 +69,25 @@ DecisionTree::selectBestPreds(bool createNewStatsCollector) {
                 }
             }
         }
-    }
-    return anyStatsCollectorCreated;
+        const bool createNewStatsCollector;
+        DT::NodeFactory& nodeFactory;
+        bool anyStatsCollectorCreated = false;
+    };
+    Visitor visitor(createNewStatsCollector, nodeFactory);
+    root->accept(visitor, root);
+    return visitor.anyStatsCollectorCreated;
+}
+
+void
+DecisionTree::makeEncoderTree() {
+    class Visitor : public DT::Visitor {
+    public:
+        void visit(DT::StatsNode& node, std::unique_ptr<DT::Node>& owner) override {
+            owner = node.getEncoder();
+        }
+    };
+    Visitor visitor;
+    root->accept(visitor, root);
 }
 
 void
