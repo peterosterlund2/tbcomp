@@ -27,6 +27,7 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
     makeEncoderTree();
     std::cout << '\n' << root->describe(0) << std::flush;
 
+    encodeValues();
 }
 
 void
@@ -88,6 +89,24 @@ DecisionTree::makeEncoderTree() {
     };
     Visitor visitor;
     root->accept(visitor, root);
+}
+
+void
+DecisionTree::encodeValues() {
+    U64 nPos = posIdx.tbSize();
+    Position pos;
+    for (U64 idx = 0; idx < nPos; idx++) {
+        if (!active.get(idx))
+            continue;
+
+        for (U64 m = pos.occupiedBB(); m; ) // Clear position
+            pos.clearPiece(BitBoard::extractSquare(m));
+        bool valid = posIdx.index2Pos(idx, pos);
+        assert(valid);
+
+        int value = (S8)data[idx];
+        data[idx] = (U8)root->encodeValue(pos, value);
+    }
 }
 
 void

@@ -37,6 +37,9 @@ private:
     /** Replace StatsNode with EncoderNode. */
     void makeEncoderTree();
 
+    /** Apply decision tree encoding for all applicable values in data. */
+    void encodeValues();
+
     DT::NodeFactory& nodeFactory;
     const PosIndex& posIdx;
     std::vector<U8>& data;

@@ -91,9 +91,9 @@ void WdlCompress::wdlDump(const std::string& outFile) {
     computeOptimalCaptures(data);
 
     std::array<U64,8> cnt{};
-    int mostFreq = computeStatistics(data, cnt);
+    computeStatistics(data, cnt);
     BitArray active(data.size(), true);
-    replaceDontCares(data, active, mostFreq);
+    replaceDontCares(data, active);
 
     WDLNodeFactory factory;
     DecisionTree dt(factory, posIdx, data, active);
@@ -240,8 +240,8 @@ void WdlCompress::computeOptimalCaptures(std::vector<U8>& data) const {
     std::cout << std::endl;
 }
 
-int WdlCompress::computeStatistics(const std::vector<U8>& data,
-                                   std::array<U64,8>& cnt) const {
+void WdlCompress::computeStatistics(const std::vector<U8>& data,
+                                    std::array<U64,8>& cnt) const {
     const U64 size = data.size();
     const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
     ThreadPool<std::array<U64,8>> pool(nThreads);
@@ -264,11 +264,8 @@ int WdlCompress::computeStatistics(const std::vector<U8>& data,
 
     std::cout << "header: -2 -1 0 1 2 illegal gameEnd optCapt" << std::endl;
     std::cout << "abs: ";
-    int mostFreq = 0;
     for (int i = 0; i < 5; i++) {
         std::cout << cnt[i] << ' ';
-        if (cnt[i] > cnt[mostFreq])
-            mostFreq = i;
     }
     std::cout << cnt[5] << ' ' << cnt[6] << ' ' << cnt[7] << std::endl;
 
@@ -280,21 +277,18 @@ int WdlCompress::computeStatistics(const std::vector<U8>& data,
     std::cout << "invalid:" << (cnt[5] / (double)size) << std::endl;
     std::cout << "gameEnd:" << (cnt[6] / (double)size) << std::endl;
     std::cout << "optCapt:" << (cnt[7] / (double)size) << std::endl;
-
-    return mostFreq;
 }
 
-void WdlCompress::replaceDontCares(std::vector<U8>& data, BitArray& active,
-                                   int mostFreq) {
+void WdlCompress::replaceDontCares(std::vector<U8>& data, BitArray& active) {
     const U64 size = data.size();
     const U64 batchSize = std::max((U64)128*1024, ((size + 1023) / 1024) & ~63);
     ThreadPool<int> pool(nThreads);
     for (U64 b = 0; b < size; b += batchSize) {
-        auto task = [&data,&active,mostFreq,size,batchSize,b](int workerNo) {
+        auto task = [&data,&active,size,batchSize,b](int workerNo) {
             U64 end = std::min(b + batchSize, size);
             for (U64 idx = b; idx < end; idx++) {
                 if (data[idx] > 2 && data[idx] < 128) {
-                    data[idx] = (U8)(mostFreq-2); // FIXME!! Set to zero
+                    data[idx] = 0;
                     active.set(idx, false);
                 }
             }

@@ -123,7 +123,7 @@ WDLEncoderNode::WDLEncoderNode(const WDLStats& stats) {
 
 int
 WDLEncoderNode::encodeValue(const Position& pos, int value) const {
-    return encTable[value];
+    return encTable[value+2];
 }
 
 std::unique_ptr<DT::StatsNode>
