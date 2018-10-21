@@ -15,7 +15,7 @@ WDLStats::entropy() const {
 
 std::string
 WDLStats::describe() const {
-    const int N = 5;
+    constexpr int N = nWdlVals;
     std::array<double,N> cnt;
     double tot = 0.0;
     for (int i = 0; i < N; i++) {
@@ -111,12 +111,11 @@ WDLStatsCollectorNode::getBest() const {
 // ------------------------------------------------------------
 
 WDLEncoderNode::WDLEncoderNode(const WDLStats& stats) {
-    const int N = stats.count.size();
-    std::vector<std::pair<U64,int>> srt;
-    srt.reserve(N);
-    U64 maxVal = ~0ULL;
+    constexpr int N = WDLStats::nWdlVals;
+    std::array<std::pair<U64,int>,N> srt;
+    const U64 maxVal = ~0ULL;
     for (int i = 0; i < N; i++)
-        srt.emplace_back(maxVal - stats.count[i], i);
+        srt[i] = std::make_pair(maxVal - stats.count[i], i);
     std::sort(srt.begin(), srt.end());
     for (int i = 0; i < N; i++)
         encTable[srt[i].second] = srt[i].first == maxVal ? -1 : i;

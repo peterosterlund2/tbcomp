@@ -14,6 +14,8 @@ class WDLStatsNode;
 
 
 struct WDLStats {
+    constexpr static int nWdlVals = 5;
+
     WDLStats() : count{} {}
 
     template <typename Pred>
@@ -61,7 +63,7 @@ struct WDLStats {
     /** String representation of data, for debugging. */
     std::string describe() const;
 
-    std::array<U64,5> count; // loss, blessed loss, draw, cursed win, win
+    std::array<U64,nWdlVals> count; // loss, blessed loss, draw, cursed win, win
 };
 
 class WDLStatsNode : public DT::StatsNode {
@@ -100,7 +102,7 @@ public:
     std::unique_ptr<DT::StatsNode> getStats() const override;
     std::string describe(int indentLevel) const override;
 
-    std::array<int, 5> encTable;
+    std::array<int, WDLStats::nWdlVals> encTable;
 };
 
 
