@@ -114,11 +114,12 @@ WDLEncoderNode::WDLEncoderNode(const WDLStats& stats) {
     const int N = stats.count.size();
     std::vector<std::pair<U64,int>> srt;
     srt.reserve(N);
+    U64 maxVal = ~0ULL;
     for (int i = 0; i < N; i++)
-        srt.emplace_back(~0ULL - stats.count[i], i);
+        srt.emplace_back(maxVal - stats.count[i], i);
     std::sort(srt.begin(), srt.end());
     for (int i = 0; i < N; i++)
-        encTable[srt[i].second] = i;
+        encTable[srt[i].second] = srt[i].first == maxVal ? -1 : i;
 }
 
 int
@@ -135,8 +136,12 @@ std::string
 WDLEncoderNode::describe(int indentLevel) const {
     std::stringstream ss;
     ss << std::string(indentLevel*2, ' ');
-    for (int v : encTable)
-        ss << v;
+    for (int v : encTable) {
+        if (v == -1)
+            ss << '.';
+        else
+            ss << v;
+    }
     ss << '\n';
     return ss.str();
 }
