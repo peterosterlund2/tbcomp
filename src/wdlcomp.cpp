@@ -1,6 +1,6 @@
 #include "wdlcomp.hpp"
 #include "decisiontree.hpp"
-#include "wdlpredicate.hpp"
+#include "wdlnode.hpp"
 #include "bitarray.hpp"
 #include "chessParseError.hpp"
 #include "syzygy/rtb-probe.hpp"
@@ -95,7 +95,7 @@ void WdlCompress::wdlDump(const std::string& outFile) {
     BitArray active(data.size(), true);
     replaceDontCares(data, active, mostFreq);
 
-    WDLPredicateFactory factory;
+    WDLNodeFactory factory;
     DecisionTree dt(factory, posIdx, data, active);
     dt.computeTree(10, 1);
 
@@ -294,7 +294,7 @@ void WdlCompress::replaceDontCares(std::vector<U8>& data, BitArray& active,
             U64 end = std::min(b + batchSize, size);
             for (U64 idx = b; idx < end; idx++) {
                 if (data[idx] > 2 && data[idx] < 128) {
-                    data[idx] = (U8)(mostFreq-2);
+                    data[idx] = (U8)(mostFreq-2); // FIXME!! Set to zero
                     active.set(idx, false);
                 }
             }

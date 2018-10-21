@@ -2,21 +2,20 @@
 #define DECISIONTREE_HPP_
 
 #include "tbutil.hpp"
-#include "predicate.hpp"
-#include <memory>
+#include "dtnode.hpp"
 
 class PosIndex;
 class BitArray;
+class Position;
 
 
 class DecisionTree {
 public:
-    /** "active" contains one bit for each element in data. The bit
-     *  is set to false when the corresponding position has been handled,
-     *  i.e. it corresponds to an invalid position or a leaf node in the
-     *  decision tree. */
-    DecisionTree(PredicateFactory& predFactory, const PosIndex& posIdx,
-                 std::vector<U8>& data, BitArray& active);
+    /** "active" contains one bit for each element in data. A bit
+     *  is set to false if the corresponding position can be handled
+     *  without using a decision tree. */
+    DecisionTree(DT::NodeFactory& nodeFactory, const PosIndex& posIdx,
+                 std::vector<U8>& data, const BitArray& active);
 
     /** Compute decision tree having maximum depth "maxDepth",
      *  using "nThreads" threads. */
@@ -28,26 +27,19 @@ public:
 private:
     /** Update statistics for all MultiPredicate nodes. */
     void updateStats();
+
     /** For each MultiPredicate nodes, replace them with the best corresponding
      *  SinglePredicate and optionally create new MultiPredicate nodes for the
      *  left/right children.
      *  @return True if an MultiPredicate was created. */
-    bool selectBestPreds(bool createNewMultiPred);
+    bool selectBestPreds(bool createNewStatsCollector);
 
-    struct DTNode;
-    void printTree(const DTNode* node, int indentLevel);
-
-    PredicateFactory& predFactory;
+    DT::NodeFactory& nodeFactory;
     const PosIndex& posIdx;
     std::vector<U8>& data;
-    BitArray& active;
+    const BitArray& active;
 
-    struct DTNode {
-        std::unique_ptr<Predicate> pred;
-        std::unique_ptr<DTNode> left;   // Left child (pred true) or nullptr
-        std::unique_ptr<DTNode> right;  // Right child (pred false) or nullptr
-    };
-    DTNode root;
+    std::unique_ptr<DT::Node> root;
 };
 
 #endif
