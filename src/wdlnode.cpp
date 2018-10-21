@@ -95,6 +95,8 @@ WDLStatsCollectorNode::applyData(const Position& pos, int value) {
     inCheck.applyData(pos, value);
     bPairW.applyData(pos, value);
     bPairB.applyData(pos, value);
+    sameB.applyData(pos, value);
+    oppoB.applyData(pos, value);
     return true;
 }
 
@@ -105,6 +107,8 @@ WDLStatsCollectorNode::getBest() const {
     best = inCheck.getBest(std::move(best));
     best = bPairW.getBest(std::move(best));
     best = bPairB.getBest(std::move(best));
+    best = sameB.getBest(std::move(best));
+    best = oppoB.getBest(std::move(best));
     return best;
 }
 

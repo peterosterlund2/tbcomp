@@ -92,6 +92,8 @@ public:
     StatsCollector<InCheckPredicate, WDLStats> inCheck;
     StatsCollector<BishopPairPredicate<true>, WDLStats> bPairW;
     StatsCollector<BishopPairPredicate<false>, WDLStats> bPairB;
+    StatsCollector<BishopColorPredicate<true>, WDLStats> sameB;
+    StatsCollector<BishopColorPredicate<false>, WDLStats> oppoB;
 };
 
 class WDLEncoderNode : public DT::EncoderNode {

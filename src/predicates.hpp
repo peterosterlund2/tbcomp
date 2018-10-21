@@ -41,6 +41,29 @@ public:
     }
 };
 
+/** Test if white/black have bishops on the same/opposite colors. */
+template <bool sameColor>
+class BishopColorPredicate : public Predicate {
+public:
+    BishopColorPredicate() {}
+    bool eval(const Position& pos) const override {
+        U64 wb = pos.pieceTypeBB(Piece::WBISHOP);
+        U64 bb = pos.pieceTypeBB(Piece::BBISHOP);
+        U64 d = BitBoard::maskDarkSq;
+        U64 l = BitBoard::maskLightSq;
+        if (sameColor) {
+            return ((wb & d) && (bb & d)) ||
+                   ((wb & l) && (bb & l));
+        } else {
+            return ((wb & d) && (bb & l)) ||
+                   ((wb & l) && (bb & d));
+        }
+    }
+    std::string name() const override {
+        return sameColor ? "sameB" : "oppoB";
+    }
+};
+
 // ----------------------------------------------------------------------------
 
 template <typename Pred, typename Stats>
