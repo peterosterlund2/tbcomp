@@ -1,5 +1,5 @@
-#ifndef DTZNODE_HPP_
-#define DTZNODE_HPP_
+#ifndef DTXNODE_HPP_
+#define DTXNODE_HPP_
 
 #include "dtnode.hpp"
 
@@ -22,4 +22,4 @@ class DTXStatsCollectorNode : public StatsCollectorNode {
 
 
 
-#endif /* DTZNODE_HPP_ */
+#endif /* DTXNODE_HPP_ */
