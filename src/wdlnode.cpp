@@ -103,12 +103,12 @@ WDLStatsCollectorNode::applyData(const Position& pos, int value) {
 std::unique_ptr<DT::Node>
 WDLStatsCollectorNode::getBest() const {
     std::unique_ptr<DT::Node> best;
-    best = wtm.getBest(std::move(best));
-    best = inCheck.getBest(std::move(best));
-    best = bPairW.getBest(std::move(best));
-    best = bPairB.getBest(std::move(best));
-    best = sameB.getBest(std::move(best));
-    best = oppoB.getBest(std::move(best));
+    wtm.updateBest(best);
+    inCheck.updateBest(best);
+    bPairW.updateBest(best);
+    bPairB.updateBest(best);
+    sameB.updateBest(best);
+    oppoB.updateBest(best);
     return best;
 }
 

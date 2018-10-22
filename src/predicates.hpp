@@ -73,11 +73,10 @@ public:
         stats[pred.eval(pos)].applyData(value);
     }
 
-    /** Return the best (lowest entropy) of this node and oldBest. */
-    std::unique_ptr<DT::Node> getBest(std::unique_ptr<DT::Node>&& oldBest) const {
-        if (oldBest && oldBest->entropy() <= stats[0].entropy() + stats[1].entropy())
-            return std::move(oldBest);
-        return Stats::makeNode(pred, stats[0], stats[1]);
+    /** Update best if this node has lower entropy. */
+    void updateBest(std::unique_ptr<DT::Node>& best) const {
+        if (!best || best->entropy() > stats[0].entropy() + stats[1].entropy())
+            best = Stats::makeNode(pred, stats[0], stats[1]);
     }
 
     Pred pred;
