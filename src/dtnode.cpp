@@ -1,5 +1,9 @@
 #include "dtnode.hpp"
+#include "predicate.hpp"
 #include <cassert>
+#include <string>
+#include <iomanip>
+#include <sstream>
 
 
 namespace DT {

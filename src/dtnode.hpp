@@ -1,10 +1,10 @@
 #ifndef DTNODE_HPP_
 #define DTNODE_HPP_
 
-#include "tbutil.hpp"
-#include "predicate.hpp"
 #include <memory>
 
+class Predicate;
+class Position;
 
 namespace DT {
 

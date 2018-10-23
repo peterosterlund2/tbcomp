@@ -1,8 +1,9 @@
 #ifndef DECISIONTREE_HPP_
 #define DECISIONTREE_HPP_
 
-#include "tbutil.hpp"
 #include "dtnode.hpp"
+#include "util/util.hpp"
+#include <vector>
 
 class PosIndex;
 class BitArray;
