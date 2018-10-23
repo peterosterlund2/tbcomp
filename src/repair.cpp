@@ -76,9 +76,9 @@ namespace RePairImpl {
         U64 freqPrio() const { return (freq << 8) + 255 - depth; }
         U64 cachePrio() const { return (indices.empty() ? (1ULL<<63) : 0) + freq; }
     };
-    struct Pair { };
-    struct Freq { };
-    struct Cache { };
+    struct Pair {};
+    struct Freq {};
+    struct Cache {};
 
     using PairCandSet = multi_index_container<
         PairCand, indexed_by<

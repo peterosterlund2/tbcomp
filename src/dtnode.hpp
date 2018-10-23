@@ -45,9 +45,9 @@ class Visitor {
 public:
     /** Default implementation visits left and right child nodes. */
     virtual void visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner);
-    virtual void visit(DT::StatsNode& node, std::unique_ptr<DT::Node>& owner) { }
-    virtual void visit(DT::StatsCollectorNode& node, std::unique_ptr<DT::Node>& owner) { }
-    virtual void visit(DT::EncoderNode& node, std::unique_ptr<DT::Node>& owner) { }
+    virtual void visit(DT::StatsNode& node, std::unique_ptr<DT::Node>& owner) {}
+    virtual void visit(DT::StatsCollectorNode& node, std::unique_ptr<DT::Node>& owner) {}
+    virtual void visit(DT::EncoderNode& node, std::unique_ptr<DT::Node>& owner) {}
 };
 
 class PredicateNode : public Node {
