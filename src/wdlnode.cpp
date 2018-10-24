@@ -97,6 +97,7 @@ WDLStatsCollectorNode::applyData(const Position& pos, int value) {
     bPairB.applyData(pos, value);
     sameB.applyData(pos, value);
     oppoB.applyData(pos, value);
+    pRace.applyData(pos, value);
     return true;
 }
 
@@ -109,6 +110,7 @@ WDLStatsCollectorNode::getBest() const {
     bPairB.updateBest(best);
     sameB.updateBest(best);
     oppoB.updateBest(best);
+    pRace.updateBest(best);
     return best;
 }
 

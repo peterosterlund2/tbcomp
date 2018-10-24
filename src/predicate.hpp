@@ -14,6 +14,7 @@ public:
     /** Return true if predicate is true for "pos". */
     virtual bool eval(const Position& pos) const = 0;
 
+    /** For debugging. */
     virtual std::string name() const = 0;
 };
 

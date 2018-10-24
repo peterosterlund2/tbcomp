@@ -50,6 +50,11 @@ struct WDLStats {
             count[i] += other.count[i];
     }
 
+    void subStats(const WDLStats& other) {
+        for (int i = 0; i < nWdlVals; i++)
+            count[i] -= other.count[i];
+    }
+
     bool isEmpty() const {
         for (U64 cnt : count)
             if (cnt != 0)
@@ -94,6 +99,7 @@ public:
     StatsCollector<BishopPairPredicate<false>, WDLStats> bPairB;
     StatsCollector<BishopColorPredicate<true>, WDLStats> sameB;
     StatsCollector<BishopColorPredicate<false>, WDLStats> oppoB;
+    MultiPredStatsCollector<PawnRacePredicate, WDLStats> pRace;
 };
 
 class WDLEncoderNode : public DT::EncoderNode {
