@@ -82,8 +82,34 @@ WDLStatsNode::isEmpty() const {
     return stats.isEmpty();
 }
 
+std::unique_ptr<DT::StatsNode>
+WDLStatsNode::mergeWithNode(const DT::StatsNode& other) const {
+    const WDLStatsNode& otherWdl = static_cast<const WDLStatsNode&>(other);
+    bool merge = false;
+
+    WDLStats sum(stats);
+    sum.addStats(otherWdl.stats);
+    double entrDiff = sum.entropy() - (stats.entropy() + otherWdl.stats.entropy());
+    if (entrDiff <= 8)
+        merge = true;
+
+    if (!merge) {
+        auto enc1 = getEncoder();
+        auto enc2 = otherWdl.getEncoder();
+        const WDLEncoderNode& wdlEnc1 = static_cast<const WDLEncoderNode&>(*enc1.get());
+        const WDLEncoderNode& wdlEnc2 = static_cast<const WDLEncoderNode&>(*enc2.get());
+        if (wdlEnc1 == wdlEnc2)
+            merge = true;
+    }
+
+    if (!merge)
+        return nullptr;
+
+    return make_unique<WDLStatsNode>(sum);
+}
+
 std::unique_ptr<DT::EncoderNode>
-WDLStatsNode::getEncoder() {
+WDLStatsNode::getEncoder() const {
     return make_unique<WDLEncoderNode>(stats);
 }
 

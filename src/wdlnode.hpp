@@ -81,8 +81,9 @@ public:
 
     void addStats(const DT::StatsNode* other) override;
     bool isEmpty() const override;
+    std::unique_ptr<DT::StatsNode> mergeWithNode(const DT::StatsNode& other) const override;
 
-    std::unique_ptr<DT::EncoderNode> getEncoder() override;
+    std::unique_ptr<DT::EncoderNode> getEncoder() const override;
 
     WDLStats stats;
 };
@@ -109,6 +110,10 @@ public:
     int encodeValue(const Position& pos, int value) const override;
     std::unique_ptr<DT::StatsNode> getStats() const override;
     std::string describe(int indentLevel) const override;
+
+    bool operator==(const WDLEncoderNode& other) const {
+        return encTable == other.encTable;
+    }
 
     std::array<int, WDLStats::nWdlVals> encTable;
 };

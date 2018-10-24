@@ -76,8 +76,12 @@ public:
     /** Return true if no positions correspond to this node. */
     virtual bool isEmpty() const = 0;
 
+    /** If merging this with "other" improves the tree, return
+     *  the merged node. Otherwise return nullptr. */
+    virtual std::unique_ptr<StatsNode> mergeWithNode(const StatsNode& other) const = 0;
+
     /** Get encoder node corresponding to the statistics in this node. */
-    virtual std::unique_ptr<EncoderNode> getEncoder() = 0;
+    virtual std::unique_ptr<EncoderNode> getEncoder() const = 0;
 };
 
 /** A collection of all possible predicates. Collects statistics about

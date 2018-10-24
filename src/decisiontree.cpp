@@ -24,6 +24,10 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
     }
     std::cout << "entropy:" << root->entropy() << std::endl;
 
+    simplifyTree();
+    std::cout << '\n' << root->describe(0) << std::flush;
+    std::cout << "entropy:" << root->entropy() << std::endl;
+
     makeEncoderTree();
     std::cout << '\n' << root->describe(0) << std::flush;
 
@@ -77,6 +81,26 @@ DecisionTree::selectBestPreds(bool createNewStatsCollector) {
     Visitor visitor(createNewStatsCollector, nodeFactory);
     root->accept(visitor, root);
     return visitor.anyStatsCollectorCreated;
+}
+
+void
+DecisionTree::simplifyTree() {
+    class Visitor : public DT::Visitor {
+        void visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner) override {
+            node.left->accept(*this, node.left);
+            node.right->accept(*this, node.right);
+
+            DT::StatsNode* left = dynamic_cast<DT::StatsNode*>(node.left.get());
+            DT::StatsNode* right = dynamic_cast<DT::StatsNode*>(node.right.get());
+            if (left && right) {
+                std::unique_ptr<DT::StatsNode> merged = left->mergeWithNode(*right);
+                if (merged)
+                    owner = std::move(merged);
+            }
+        }
+    };
+    Visitor visitor;
+    root->accept(visitor, root);
 }
 
 void
