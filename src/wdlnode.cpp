@@ -98,8 +98,12 @@ WDLStatsNode::mergeWithNode(const DT::StatsNode& other) const {
         auto enc2 = otherWdl.getEncoder();
         const WDLEncoderNode& wdlEnc1 = static_cast<const WDLEncoderNode&>(*enc1.get());
         const WDLEncoderNode& wdlEnc2 = static_cast<const WDLEncoderNode&>(*enc2.get());
-        if (wdlEnc1 == wdlEnc2)
+        if (wdlEnc1 == wdlEnc2) {
             merge = true;
+        } else if ((wdlEnc1.subSetOf(wdlEnc2) && wdlEnc1.hasEntropy()) ||
+                   (wdlEnc2.subSetOf(wdlEnc1) && wdlEnc2.hasEntropy())) {
+            merge = true;
+        }
     }
 
     if (!merge)
@@ -175,4 +179,21 @@ WDLEncoderNode::describe(int indentLevel) const {
     }
     ss << '\n';
     return ss.str();
+}
+
+bool
+WDLEncoderNode::subSetOf(const WDLEncoderNode& other) const {
+    for (int i = 0; i < WDLStats::nWdlVals; i++)
+        if (encTable[i] != -1 && encTable[i] != other.encTable[i])
+            return false;
+    return true;
+}
+
+bool
+WDLEncoderNode::hasEntropy() const {
+    int nValid = 0;
+    for (int v : encTable)
+        if (v >= 0)
+            nValid++;
+    return nValid > 1;
 }

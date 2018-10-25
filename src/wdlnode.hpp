@@ -111,6 +111,13 @@ public:
     std::unique_ptr<DT::StatsNode> getStats() const override;
     std::string describe(int indentLevel) const override;
 
+    /** Return true if "other" can encode all values "this" can encode,
+     *  with the same encoding result. */
+    bool subSetOf(const WDLEncoderNode& other) const;
+
+    /** Return true if this node corresponds to non-zero entropy. */
+    bool hasEntropy() const;
+
     bool operator==(const WDLEncoderNode& other) const {
         return encTable == other.encTable;
     }
