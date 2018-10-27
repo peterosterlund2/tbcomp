@@ -4,14 +4,13 @@
 #include "dtnode.hpp"
 #include "predicates.hpp"
 
+class WDLStatsNode;
+
 
 class WDLNodeFactory : public DT::NodeFactory {
 public:
     std::unique_ptr<DT::StatsCollectorNode> makeStatsCollector() override;
 };
-
-class WDLStatsNode;
-
 
 struct WDLStats {
     constexpr static int nWdlVals = 5;

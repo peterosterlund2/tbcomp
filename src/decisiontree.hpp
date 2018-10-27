@@ -10,13 +10,26 @@ class BitArray;
 class Position;
 
 
+/** Abstract representation of uncompressed data for a tablebase. */
+class UncompressedData {
+public:
+    virtual ~UncompressedData() = default;
+
+    virtual int getValue(U64 idx) const = 0;
+    virtual void setValue(U64 idx, int value) = 0;
+
+    virtual bool isActive(U64 idx) const = 0;
+    virtual void setActive(U64 idx, bool active) = 0;
+};
+
+/** Class to compute a decision tree that predicts the values in a tablebase. */
 class DecisionTree {
 public:
     /** "active" contains one bit for each element in data. A bit
      *  is set to false if the corresponding position can be handled
      *  without using a decision tree. */
     DecisionTree(DT::NodeFactory& nodeFactory, const PosIndex& posIdx,
-                 std::vector<U8>& data, const BitArray& active);
+                 UncompressedData& data, const BitArray& active);
 
     /** Compute decision tree having maximum depth "maxDepth",
      *  using "nThreads" threads. */
@@ -46,7 +59,7 @@ private:
 
     DT::NodeFactory& nodeFactory;
     const PosIndex& posIdx;
-    std::vector<U8>& data;
+    UncompressedData& data;
     const BitArray& active;
 
     std::unique_ptr<DT::Node> root;

@@ -1,5 +1,4 @@
 #include "wdlcomp.hpp"
-#include "decisiontree.hpp"
 #include "wdlnode.hpp"
 #include "bitarray.hpp"
 #include "chessParseError.hpp"
@@ -96,7 +95,8 @@ void WdlCompress::wdlDump(const std::string& outFile) {
     replaceDontCares(data, active);
 
     WDLNodeFactory factory;
-    DecisionTree dt(factory, posIdx, data, active);
+    WDLUncompressedData uncompData(data);
+    DecisionTree dt(factory, posIdx, uncompData, active);
     dt.computeTree(10, 1);
 
     writeFile(data, outFile);

@@ -6,7 +6,7 @@
 
 
 DecisionTree::DecisionTree(DT::NodeFactory& nodeFactory, const PosIndex& posIdx,
-                           std::vector<U8>& data, const BitArray& active)
+                           UncompressedData& data, const BitArray& active)
     : nodeFactory(nodeFactory), posIdx(posIdx), data(data), active(active) {
 }
 
@@ -47,7 +47,7 @@ DecisionTree::updateStats() {
         bool valid = posIdx.index2Pos(idx, pos);
         assert(valid);
 
-        int value = (S8)data[idx];
+        int value = data.getValue(idx);
         root->applyData(pos, value);
     }
 }
@@ -128,8 +128,8 @@ DecisionTree::encodeValues() {
         bool valid = posIdx.index2Pos(idx, pos);
         assert(valid);
 
-        int value = (S8)data[idx];
-        data[idx] = (U8)root->encodeValue(pos, value);
+        int value = data.getValue(idx);
+        data.setValue(idx, root->encodeValue(pos, value));
     }
 }
 
