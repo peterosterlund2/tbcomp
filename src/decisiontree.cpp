@@ -6,7 +6,7 @@
 
 
 DecisionTree::DecisionTree(DT::NodeFactory& nodeFactory, const PosIndex& posIdx,
-                           UncompressedData& data, const BitArray& active)
+                           DT::UncompressedData& data, const BitArray& active)
     : nodeFactory(nodeFactory), posIdx(posIdx), data(data), active(active) {
 }
 
@@ -38,6 +38,7 @@ void
 DecisionTree::updateStats() {
     U64 nPos = posIdx.tbSize();
     Position pos;
+    std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
     for (U64 idx = 0; idx < nPos; idx++) {
         if (!active.get(idx) || data.isHandled(idx))
             continue;
@@ -46,9 +47,10 @@ DecisionTree::updateStats() {
             pos.clearPiece(BitBoard::extractSquare(m));
         bool valid = posIdx.index2Pos(idx, pos);
         assert(valid);
+        ctx->init(pos, data, idx);
 
         int value = data.getValue(idx);
-        if (!root->applyData(pos, value))
+        if (!root->applyData(pos, value, *ctx))
             data.setHandled(idx, true);
     }
 }
@@ -120,6 +122,7 @@ void
 DecisionTree::encodeValues() {
     U64 nPos = posIdx.tbSize();
     Position pos;
+    std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
     for (U64 idx = 0; idx < nPos; idx++) {
         if (!active.get(idx))
             continue;
@@ -128,9 +131,11 @@ DecisionTree::encodeValues() {
             pos.clearPiece(BitBoard::extractSquare(m));
         bool valid = posIdx.index2Pos(idx, pos);
         assert(valid);
+        ctx->init(pos, data, idx);
 
         int value = data.getValue(idx);
-        data.setEncoded(idx, root->encodeValue(pos, value));
+        int encVal = root->encodeValue(pos, value, *ctx);
+        data.setEncoded(idx, encVal);
     }
 }
 

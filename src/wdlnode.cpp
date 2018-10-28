@@ -1,12 +1,5 @@
 #include "wdlnode.hpp"
-
-
-std::unique_ptr<DT::StatsCollectorNode>
-WDLNodeFactory::makeStatsCollector() {
-    return make_unique<WDLStatsCollectorNode>();
-};
-
-// ------------------------------------------------------------
+#include "textio.hpp"
 
 double
 WDLStats::entropy() const {
@@ -120,7 +113,7 @@ WDLStatsNode::getEncoder() const {
 // ------------------------------------------------------------
 
 bool
-WDLStatsCollectorNode::applyData(const Position& pos, int value) {
+WDLStatsCollectorNode::applyData(const Position& pos, int value, DT::EvalContext& ctx) {
     wtm.applyData(pos, value);
     inCheck.applyData(pos, value);
     bPairW.applyData(pos, value);
@@ -151,15 +144,29 @@ WDLEncoderNode::WDLEncoderNode(const WDLStats& stats) {
     std::array<std::pair<U64,int>,N> srt;
     const U64 maxVal = ~0ULL;
     for (int i = 0; i < N; i++)
-        srt[i] = std::make_pair(maxVal - stats.count[i], i);
+        srt[i] = std::make_pair(maxVal - stats.count[i], stats.count[i] ? i : -1);
     std::sort(srt.begin(), srt.end());
     for (int i = 0; i < N; i++)
-        encTable[srt[i].second] = srt[i].first == maxVal ? -1 : i;
+        encTable[i] = srt[i].second;
 }
 
 int
-WDLEncoderNode::encodeValue(const Position& pos, int value) const {
-    return encTable[value+2];
+WDLEncoderNode::encodeValue(const Position& pos, int value, DT::EvalContext& ctx) const {
+    const WDLEvalContext& wdlCtx = static_cast<const WDLEvalContext&>(ctx);
+    constexpr int N = WDLStats::nWdlVals;
+    int ret = 0;
+    for (int i = 0; i < N; i++) {
+        int enc = encTable[i] - 2;
+        if (enc == value) {
+            return ret;
+        } else if (enc != -1) {
+            int captWdl = wdlCtx.getCaptureWdl();
+            if (pos.isWhiteMove() ? (enc >= captWdl) : (enc <= captWdl))
+                ret++;
+        }
+    }
+    assert(false);
+    return ret;
 }
 
 std::unique_ptr<DT::StatsNode>
@@ -183,8 +190,8 @@ WDLEncoderNode::describe(int indentLevel) const {
 
 bool
 WDLEncoderNode::subSetOf(const WDLEncoderNode& other) const {
-    for (int i = 0; i < WDLStats::nWdlVals; i++)
-        if (encTable[i] != -1 && encTable[i] != other.encTable[i])
+    for (int i = 0; i < WDLStats::nWdlVals && (encTable[i] != -1); i++)
+        if (encTable[i] != other.encTable[i])
             return false;
     return true;
 }
@@ -196,4 +203,25 @@ WDLEncoderNode::hasEntropy() const {
         if (v >= 0)
             nValid++;
     return nValid > 1;
+}
+
+// ------------------------------------------------------------
+
+std::unique_ptr<DT::StatsCollectorNode>
+WDLNodeFactory::makeStatsCollector() {
+    return make_unique<WDLStatsCollectorNode>();
+};
+
+std::unique_ptr<DT::EvalContext>
+WDLNodeFactory::makeEvalContext(const PosIndex& posIdx) {
+    return make_unique<WDLEvalContext>(posIdx);
+}
+
+// ------------------------------------------------------------
+
+void
+WDLEvalContext::init(const Position& pos,
+                     const DT::UncompressedData& data, U64 idx) {
+    const WDLUncompressedData& wdlData = static_cast<const WDLUncompressedData&>(data);
+    captWdl = wdlData.getCaptureWdl(idx);
 }

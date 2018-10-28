@@ -17,13 +17,13 @@ Visitor::visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner) {
 // ------------------------------------------------------------
 
 bool
-PredicateNode::applyData(const Position& pos, int value) {
-    return (pred->eval(pos) ? right : left)->applyData(pos, value);
+PredicateNode::applyData(const Position& pos, int value, EvalContext& ctx) {
+    return (pred->eval(pos) ? right : left)->applyData(pos, value, ctx);
 }
 
 int
-PredicateNode::encodeValue(const Position& pos, int value) const {
-    return (pred->eval(pos) ? right : left)->encodeValue(pos, value);
+PredicateNode::encodeValue(const Position& pos, int value, EvalContext& ctx) const {
+    return (pred->eval(pos) ? right : left)->encodeValue(pos, value, ctx);
 }
 
 double
@@ -73,12 +73,12 @@ PredicateNode::describe(int indentLevel) const {
 // ------------------------------------------------------------
 
 bool
-StatsNode::applyData(const Position& pos, int value) {
+StatsNode::applyData(const Position& pos, int value, EvalContext& ctx) {
     return false;
 }
 
 int
-StatsNode::encodeValue(const Position& pos, int value) const {
+StatsNode::encodeValue(const Position& pos, int value, EvalContext& ctx) const {
     assert(false);
     return 0;
 }
@@ -91,7 +91,7 @@ StatsNode::accept(Visitor& visitor, std::unique_ptr<Node>& owner) {
 // ------------------------------------------------------------
 
 int
-StatsCollectorNode::encodeValue(const Position& pos, int value) const {
+StatsCollectorNode::encodeValue(const Position& pos, int value, EvalContext& ctx) const {
     assert(false);
     return 0;
 }
@@ -126,7 +126,7 @@ EncoderNode::entropy() const {
 }
 
 bool
-EncoderNode::applyData(const Position& pos, int value) {
+EncoderNode::applyData(const Position& pos, int value, EvalContext& ctx) {
     assert(false);
     return false;
 }

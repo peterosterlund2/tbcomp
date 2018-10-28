@@ -1,10 +1,11 @@
 #ifndef DTNODE_HPP_
 #define DTNODE_HPP_
 
-#include <memory>
+#include "util/util.hpp"
 
 class Predicate;
 class Position;
+class PosIndex;
 
 namespace DT {
 
@@ -13,6 +14,8 @@ class StatsNode;
 class StatsCollectorNode;
 class EncoderNode;
 class Visitor;
+class EvalContext;
+
 
 class Node {
 public:
@@ -20,11 +23,11 @@ public:
 
     /** Apply position value to tree, possibly by delegating to a child node.
      *  @return True if application was successful, false otherwise. */
-    virtual bool applyData(const Position& pos, int value) = 0;
+    virtual bool applyData(const Position& pos, int value, EvalContext& ctx) = 0;
 
     /** Encode a value based on decision tree prediction. Most likely value
      *  encoded as 0, second most likely as 1, etc. */
-    virtual int encodeValue(const Position& pos, int value) const = 0;
+    virtual int encodeValue(const Position& pos, int value, EvalContext& ctx) const = 0;
 
     /** Sum of entropy for all nodes in the tree. */
     virtual double entropy() const = 0;
@@ -50,10 +53,32 @@ public:
     virtual void visit(DT::EncoderNode& node, std::unique_ptr<DT::Node>& owner) {}
 };
 
+/** Abstract representation of uncompressed data for a tablebase. */
+class UncompressedData {
+public:
+    virtual ~UncompressedData() = default;
+
+    virtual int getValue(U64 idx) const = 0;
+    virtual void setEncoded(U64 idx, int value) = 0;
+
+    virtual bool isHandled(U64 idx) const = 0;
+    virtual void setHandled(U64 idx, bool active) = 0;
+};
+
+class EvalContext {
+public:
+    EvalContext(const PosIndex& posIdx) : posIdx(posIdx) {}
+    ~EvalContext() = default;
+
+    virtual void init(const Position& pos, const UncompressedData& data, U64 idx) = 0;
+protected:
+    const PosIndex& posIdx;
+};
+
 class PredicateNode : public Node {
 public:
-    bool applyData(const Position& pos, int value) override;
-    int encodeValue(const Position& pos, int value) const override;
+    bool applyData(const Position& pos, int value, EvalContext& ctx) override;
+    int encodeValue(const Position& pos, int value, EvalContext& ctx) const override;
     double entropy() const override;
     std::unique_ptr<StatsNode> getStats() const override;
     void accept(Visitor& visitor, std::unique_ptr<Node>& owner) override;
@@ -66,8 +91,8 @@ public:
 
 class StatsNode : public Node {
 public:
-    bool applyData(const Position& pos, int value) override;
-    int encodeValue(const Position& pos, int value) const override;
+    bool applyData(const Position& pos, int value, EvalContext& ctx) override;
+    int encodeValue(const Position& pos, int value, EvalContext& ctx) const override;
     void accept(Visitor& visitor, std::unique_ptr<Node>& owner) override;
 
     /** Add statistics from "other" to this node. */
@@ -88,7 +113,7 @@ public:
  *  how successful each predicate is at reducing the entropy of the data. */
 class StatsCollectorNode : public Node {
 public:
-    int encodeValue(const Position& pos, int value) const override;
+    int encodeValue(const Position& pos, int value, EvalContext& ctx) const override;
     double entropy() const override;
     std::unique_ptr<StatsNode> getStats() const override;
     void accept(Visitor& visitor, std::unique_ptr<Node>& owner) override;
@@ -101,13 +126,15 @@ public:
 class EncoderNode : public Node {
 public:
     double entropy() const override;
-    bool applyData(const Position& pos, int value) override;
+    bool applyData(const Position& pos, int value, EvalContext& ctx) override;
     void accept(Visitor& visitor, std::unique_ptr<Node>& owner) override;
 };
 
 class NodeFactory {
 public:
     virtual std::unique_ptr<StatsCollectorNode> makeStatsCollector() = 0;
+
+    virtual std::unique_ptr<EvalContext> makeEvalContext(const PosIndex& posIdx) = 0;
 };
 
 }

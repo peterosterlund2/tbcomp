@@ -7,11 +7,6 @@
 class WDLStatsNode;
 
 
-class WDLNodeFactory : public DT::NodeFactory {
-public:
-    std::unique_ptr<DT::StatsCollectorNode> makeStatsCollector() override;
-};
-
 struct WDLStats {
     constexpr static int nWdlVals = 5;
 
@@ -89,7 +84,7 @@ public:
 
 class WDLStatsCollectorNode : public DT::StatsCollectorNode {
 public:
-    bool applyData(const Position& pos, int value) override;
+    bool applyData(const Position& pos, int value, DT::EvalContext& ctx) override;
 
     std::unique_ptr<DT::Node> getBest() const override;
 
@@ -106,7 +101,7 @@ class WDLEncoderNode : public DT::EncoderNode {
 public:
     WDLEncoderNode(const WDLStats& stats);
 
-    int encodeValue(const Position& pos, int value) const override;
+    int encodeValue(const Position& pos, int value, DT::EvalContext& ctx) const override;
     std::unique_ptr<DT::StatsNode> getStats() const override;
     std::string describe(int indentLevel) const override;
 
@@ -122,6 +117,72 @@ public:
     }
 
     std::array<int, WDLStats::nWdlVals> encTable;
+};
+
+/** Class to compactly store WDL related information for a position. */
+class WDLInfo {
+public:
+    int getWdl() const { return getBits(0, 3) - 2; }
+    int getCaptureWdl() const { return getBits(3, 3) - 2; }
+    bool getHandled() const { return getBits(7, 1); }
+    U8 getData() const { return data; }
+
+    void setWdl(int wdl) & { setBits(0, 3, wdl + 2); }
+    void setCaptureWdl(int wdl) & { setBits(3, 3, wdl + 2); }
+    void setHandled(bool handled) & { setBits(7, 1, handled); }
+    void setData(U8 val) & { data = val; }
+
+private:
+    void setBits(int first, int size, int val) {
+        int mask = ((1 << size) - 1) << first;
+        data = (data & ~mask) | ((val << first) & mask);
+    }
+
+    int getBits(int first, int size) const {
+        int mask = ((1 << size) - 1);
+        return (data >> first) & mask;
+    }
+
+    U8 data = 0; // Bit 0-2 : wdl + 2
+                 // Bit 3-5 : (best capture wdl) + 2
+                 // Bit 6   : Not used
+                 // Bit 7   : handled
+};
+
+class WDLUncompressedData : public DT::UncompressedData {
+public:
+    WDLUncompressedData(std::vector<WDLInfo>& data) : data(data) {}
+
+    int getValue(U64 idx) const override { return data[idx].getWdl(); }
+    void setEncoded(U64 idx, int value) override { data[idx].setData(value); }
+
+    bool isHandled(U64 idx) const override { return data[idx].getHandled(); }
+    void setHandled(U64 idx, bool handled) override { data[idx].setHandled(handled); }
+
+    int getCaptureWdl(U64 idx) const { return data[idx].getCaptureWdl(); }
+    void setCaptureWdl(U64 idx, int wdl) { data[idx].setCaptureWdl(wdl); }
+
+private:
+    std::vector<WDLInfo>& data;
+};
+
+class WDLNodeFactory : public DT::NodeFactory {
+public:
+    std::unique_ptr<DT::StatsCollectorNode> makeStatsCollector() override;
+
+    std::unique_ptr<DT::EvalContext> makeEvalContext(const PosIndex& posIdx) override;
+};
+
+class WDLEvalContext : public DT::EvalContext {
+public:
+    WDLEvalContext(const PosIndex& posIdx) : DT::EvalContext(posIdx) {}
+
+    void init(const Position& pos, const DT::UncompressedData& data, U64 idx) override;
+
+    int getCaptureWdl() const { return captWdl; }
+
+private:
+    int captWdl = 0;
 };
 
 

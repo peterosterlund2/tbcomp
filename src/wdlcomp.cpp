@@ -1,5 +1,4 @@
 #include "wdlcomp.hpp"
-#include "wdlnode.hpp"
 #include "bitarray.hpp"
 #include "chessParseError.hpp"
 #include "syzygy/rtb-probe.hpp"
