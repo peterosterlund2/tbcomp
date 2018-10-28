@@ -17,10 +17,10 @@ public:
     bool getHandled() const { return getBits(7, 1); }
     U8 getData() const { return data; }
 
-    void setWdl(int wdl) { setBits(0, 3, wdl + 2); }
-    void setCaptureWdl(int wdl) { setBits(3, 3, wdl + 2); }
-    void setHandled(bool handled) { setBits(7, 1, handled); }
-    void setData(U8 val) { data = val; }
+    void setWdl(int wdl) & { setBits(0, 3, wdl + 2); }
+    void setCaptureWdl(int wdl) & { setBits(3, 3, wdl + 2); }
+    void setHandled(bool handled) & { setBits(7, 1, handled); }
+    void setData(U8 val) & { data = val; }
 
 private:
     void setBits(int first, int size, int val) {
@@ -68,7 +68,7 @@ public:
     void setEncoded(U64 idx, int value) override { data[idx].setData(value); }
 
     bool isHandled(U64 idx) const override { return data[idx].getHandled(); }
-    void setHandled(U64 idx, bool handled) override { data[idx].setHandled(!handled); }
+    void setHandled(U64 idx, bool handled) override { data[idx].setHandled(handled); }
 
     int getCaptureWdl(U64 idx) const { return data[idx].getCaptureWdl(); }
     void setCaptureWdl(U64 idx, int wdl) { data[idx].setCaptureWdl(wdl); }

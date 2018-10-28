@@ -39,7 +39,7 @@ DecisionTree::updateStats() {
     U64 nPos = posIdx.tbSize();
     Position pos;
     for (U64 idx = 0; idx < nPos; idx++) {
-        if (!active.get(idx))
+        if (!active.get(idx) || data.isHandled(idx))
             continue;
 
         for (U64 m = pos.occupiedBB(); m; ) // Clear position
@@ -48,7 +48,8 @@ DecisionTree::updateStats() {
         assert(valid);
 
         int value = data.getValue(idx);
-        root->applyData(pos, value);
+        if (!root->applyData(pos, value))
+            data.setHandled(idx, true);
     }
 }
 
