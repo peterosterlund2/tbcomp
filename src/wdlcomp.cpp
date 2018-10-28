@@ -269,7 +269,7 @@ WdlCompress::computeStatistics(const std::vector<WDLInfo>& data,
         for (int i = 0; i < 8; i++)
             cnt[i] += res[i];
 
-    std::cout << "header: -2 -1 0 1 2 illegal gameEnd optCapt" << std::endl;
+    std::cout << "header: -2 -1 0 1 2 invalid gameEnd optCapt" << std::endl;
     std::cout << "abs: ";
     for (int i = 0; i < 5; i++) {
         std::cout << cnt[i] << ' ';
@@ -312,6 +312,7 @@ WdlCompress::replaceDontCares(std::vector<WDLInfo>& data, BitArray& active) {
 void
 WdlCompress::writeFile(const std::vector<WDLInfo>& data,
                        const std::string& outFile) const {
+    std::cout << "Writing..." << std::endl;
     std::ofstream outF(outFile);
     static_assert(sizeof(WDLInfo) == 1, "");
     outF.write((const char*)data.data(), data.size());
