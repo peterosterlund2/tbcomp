@@ -13,17 +13,18 @@ struct WDLStats {
     WDLStats() : count{} {}
 
     template <typename Pred>
-    static std::unique_ptr<DT::Node> makeNode(const Pred& pred, const WDLStats& stats1,
-                                              const WDLStats& stats2) {
-        if (stats1.isEmpty()) {
-            return make_unique<WDLStatsNode>(stats2);
-        } else if (stats2.isEmpty()) {
-            return make_unique<WDLStatsNode>(stats1);
+    static std::unique_ptr<DT::Node> makeNode(const Pred& pred,
+                                              const WDLStats& statsFalse,
+                                              const WDLStats& statsTrue) {
+        if (statsFalse.isEmpty()) {
+            return make_unique<WDLStatsNode>(statsTrue);
+        } else if (statsTrue.isEmpty()) {
+            return make_unique<WDLStatsNode>(statsFalse);
         } else {
             auto ret = make_unique<DT::PredicateNode>();
             ret->pred = make_unique<Pred>(pred);
-            ret->left = make_unique<WDLStatsNode>(stats1);
-            ret->right = make_unique<WDLStatsNode>(stats2);
+            ret->left = make_unique<WDLStatsNode>(statsFalse);
+            ret->right = make_unique<WDLStatsNode>(statsTrue);
             return std::move(ret);
         }
     }

@@ -147,15 +147,15 @@ public:
 
     void updateBest(std::unique_ptr<DT::Node>& best) const {
         const int N = maxVal - minVal + 1;
-        Stats stats1, stats2;
+        Stats statsTrue, statsFalse;
         for (int i = 0; i < N; i++)
-            stats2.addStats(stats[i]);
+            statsFalse.addStats(stats[i]);
         for (int i = 0; i < N-1; i++) {
-            stats1.addStats(stats[i]);
-            stats2.subStats(stats[i]);
-            if (!best || best->entropy() > stats1.entropy() + stats2.entropy())
+            statsTrue.addStats(stats[i]);
+            statsFalse.subStats(stats[i]);
+            if (!best || best->entropy() > statsTrue.entropy() + statsFalse.entropy())
                 best = Stats::makeNode(MultiPredBound<MultiPred>(pred, minVal + i),
-                                       stats1, stats2);
+                                       statsFalse, statsTrue);
         }
     }
 private:
