@@ -145,7 +145,9 @@ Huffman::computePrefixCode(const std::vector<U64>& freqTable, HuffCode& code) {
         int child2;  // Right child id or -1 for a leaf node
 
         bool operator<(const Node& n) const {
-            return n.freq < freq;
+            if (n.freq != freq)
+                return n.freq < freq;
+            return n.id < id;
         }
     };
 
