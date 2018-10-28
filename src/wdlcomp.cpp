@@ -84,7 +84,7 @@ WdlCompress::WdlCompress(const std::string& tbType) {
 void WdlCompress::wdlDump(const std::string& outFile) {
     PosIndex& posIdx = *posIndex;
     const U64 size = posIdx.tbSize();
-    std::vector<U8> data(size);
+    std::vector<WDLInfo> data(size);
 
     initializeData(data);
     computeOptimalCaptures(data);
@@ -102,7 +102,7 @@ void WdlCompress::wdlDump(const std::string& outFile) {
     writeFile(data, outFile);
 }
 
-void WdlCompress::initializeData(std::vector<U8>& data) {
+void WdlCompress::initializeData(std::vector<WDLInfo>& data) {
     PosIndex& posIdx = *posIndex;
     const U64 size = posIdx.tbSize();
     const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
@@ -153,7 +153,7 @@ void WdlCompress::initializeData(std::vector<U8>& data) {
                         val = wdl;
                     }
                 }
-                data[idx] = (U8)val;
+                data[idx].setWdl(val);
             }
             return std::make_pair(bestWtm, bestBtm);
         };
@@ -175,7 +175,7 @@ void WdlCompress::initializeData(std::vector<U8>& data) {
     std::cout << "bestWtm:" << bestWtm << " bestBtm:" << bestBtm << std::endl;
 }
 
-void WdlCompress::computeOptimalCaptures(std::vector<U8>& data) const {
+void WdlCompress::computeOptimalCaptures(std::vector<WDLInfo>& data) const {
     PosIndex& posIdx = *posIndex;
     const U64 size = posIdx.tbSize();
     const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
@@ -186,7 +186,7 @@ void WdlCompress::computeOptimalCaptures(std::vector<U8>& data) const {
             U64 end = std::min(b + batchSize, size);
             Position pos;
             for (U64 idx = b; idx < end; idx++) {
-                if (data[idx] == 3 || data[idx] == 4)
+                if (data[idx].getWdl() == 3 || data[idx].getWdl() == 4)
                     continue;
                 for (U64 m = pos.occupiedBB(); m; ) // Clear position
                     pos.clearPiece(BitBoard::extractSquare(m));
@@ -224,7 +224,7 @@ void WdlCompress::computeOptimalCaptures(std::vector<U8>& data) const {
                     }
                 }
                 if (optCapt)
-                    data[idx] = 5;
+                    data[idx].setWdl(5);
             }
             return 0;
         };
@@ -240,7 +240,7 @@ void WdlCompress::computeOptimalCaptures(std::vector<U8>& data) const {
     std::cout << std::endl;
 }
 
-void WdlCompress::computeStatistics(const std::vector<U8>& data,
+void WdlCompress::computeStatistics(const std::vector<WDLInfo>& data,
                                     std::array<U64,8>& cnt) const {
     const U64 size = data.size();
     const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
@@ -250,7 +250,7 @@ void WdlCompress::computeStatistics(const std::vector<U8>& data,
             std::array<U64,8> cnt{};
             U64 end = std::min(b + batchSize, size);
             for (U64 idx = b; idx < end; idx++) {
-                int val = (S8)data[idx];
+                int val = data[idx].getWdl();
                 cnt[val+2]++;
             }
             return cnt;
@@ -279,7 +279,7 @@ void WdlCompress::computeStatistics(const std::vector<U8>& data,
     std::cout << "optCapt:" << (cnt[7] / (double)size) << std::endl;
 }
 
-void WdlCompress::replaceDontCares(std::vector<U8>& data, BitArray& active) {
+void WdlCompress::replaceDontCares(std::vector<WDLInfo>& data, BitArray& active) {
     const U64 size = data.size();
     const U64 batchSize = std::max((U64)128*1024, ((size + 1023) / 1024) & ~63);
     ThreadPool<int> pool(nThreads);
@@ -287,8 +287,8 @@ void WdlCompress::replaceDontCares(std::vector<U8>& data, BitArray& active) {
         auto task = [&data,&active,size,batchSize,b](int workerNo) {
             U64 end = std::min(b + batchSize, size);
             for (U64 idx = b; idx < end; idx++) {
-                if (data[idx] > 2 && data[idx] < 128) {
-                    data[idx] = 0;
+                if (data[idx].getWdl() > 2) {
+                    data[idx].setData(0);
                     active.set(idx, false);
                 }
             }
@@ -301,8 +301,9 @@ void WdlCompress::replaceDontCares(std::vector<U8>& data, BitArray& active) {
         ;
 }
 
-void WdlCompress::writeFile(const std::vector<U8>& data,
+void WdlCompress::writeFile(const std::vector<WDLInfo>& data,
                             const std::string& outFile) const {
     std::ofstream outF(outFile);
+    static_assert(sizeof(WDLInfo) == 1, "");
     outF.write((const char*)data.data(), data.size());
 }

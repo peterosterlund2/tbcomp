@@ -16,10 +16,10 @@ public:
     virtual ~UncompressedData() = default;
 
     virtual int getValue(U64 idx) const = 0;
-    virtual void setValue(U64 idx, int value) = 0;
+    virtual void setEncoded(U64 idx, int value) = 0;
 
-    virtual bool isActive(U64 idx) const = 0;
-    virtual void setActive(U64 idx, bool active) = 0;
+    virtual bool isHandled(U64 idx) const = 0;
+    virtual void setHandled(U64 idx, bool active) = 0;
 };
 
 /** Class to compute a decision tree that predicts the values in a tablebase. */

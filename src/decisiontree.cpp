@@ -129,7 +129,7 @@ DecisionTree::encodeValues() {
         assert(valid);
 
         int value = data.getValue(idx);
-        data.setValue(idx, root->encodeValue(pos, value));
+        data.setEncoded(idx, root->encodeValue(pos, value));
     }
 }
 
