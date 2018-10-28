@@ -60,7 +60,8 @@ private:
 };
 
 
-inline BitBufferWriter::BitBufferWriter()
+inline
+BitBufferWriter::BitBufferWriter()
     : data(0), nDataBits(0) {
 }
 
@@ -88,7 +89,8 @@ BitBufferWriter::getBuf() {
     return buf;
 }
 
-inline BitBufferReader::BitBufferReader(const U8* buf)
+inline
+BitBufferReader::BitBufferReader(const U8* buf)
     : buf(buf), data(0), nDataBits(0) {
 }
 

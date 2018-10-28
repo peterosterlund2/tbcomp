@@ -1,6 +1,7 @@
 #include "bitbuffer.hpp"
 
-void BitBufferWriter::writeU64(U64 val) {
+void
+BitBufferWriter::writeU64(U64 val) {
     U64 tmp = val;
     int nBits = 0;
     while (tmp > 0) {
@@ -31,7 +32,8 @@ BitBufferWriter::writeData() {
 }
 
 
-U64 BitBufferReader::readU64() {
+U64
+BitBufferReader::readU64() {
     int nBits = 0;
     while (!readBit())
         nBits++;

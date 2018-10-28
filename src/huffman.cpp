@@ -8,8 +8,9 @@
 #include <utility>
 
 
-void HuffCode::setSymbolLengths(const std::vector<int>& bitLenVec,
-                                int defaultSym) {
+void
+HuffCode::setSymbolLengths(const std::vector<int>& bitLenVec,
+                           int defaultSym) {
     symLen = bitLenVec;
     bool trivial = true;
     for (int s : symLen) {
@@ -21,7 +22,8 @@ void HuffCode::setSymbolLengths(const std::vector<int>& bitLenVec,
     computeTree();
 }
 
-void HuffCode::toBitBuf(BitBufferWriter& buf, bool includeNumSyms) const {
+void
+HuffCode::toBitBuf(BitBufferWriter& buf, bool includeNumSyms) const {
     if (includeNumSyms)
         buf.writeU64(symLen.size());
 
@@ -38,12 +40,14 @@ void HuffCode::toBitBuf(BitBufferWriter& buf, bool includeNumSyms) const {
         buf.writeU64(defaultSymbol);
 }
 
-void HuffCode::fromBitBuf(BitBufferReader& buf) {
+void
+HuffCode::fromBitBuf(BitBufferReader& buf) {
     int numSyms = buf.readU64();
     fromBitBuf(buf, numSyms);
 }
 
-void HuffCode::fromBitBuf(BitBufferReader& buf, int numSyms) {
+void
+HuffCode::fromBitBuf(BitBufferReader& buf, int numSyms) {
     int symBits = buf.readU64();
     symLen.resize(numSyms);
     for (int i = 0; i < numSyms; i++)
@@ -52,7 +56,8 @@ void HuffCode::fromBitBuf(BitBufferReader& buf, int numSyms) {
     computeTree();
 }
 
-void HuffCode::computeTree() {
+void
+HuffCode::computeTree() {
     const int nSym = symLen.size();
     std::vector<std::pair<int,int>> syms; // length, symbol number
     for (int i = 0; i < nSym; i++)
@@ -128,7 +133,8 @@ HuffCode::encodeSymbol(int data, BitBufferWriter& buf) const {
 }
 
 
-void Huffman::computePrefixCode(const std::vector<U64>& freqTable, HuffCode& code) {
+void
+Huffman::computePrefixCode(const std::vector<U64>& freqTable, HuffCode& code) {
     const int nSym = freqTable.size();
     assert(nSym > 0);
 
@@ -217,14 +223,16 @@ void Huffman::computePrefixCode(const std::vector<U64>& freqTable, HuffCode& cod
     code.setSymbolLengths(lenVec, defaultSym);
 }
 
-void Huffman::encode(const std::vector<int>& data, const HuffCode& code,
-                     BitBufferWriter& out) {
+void
+Huffman::encode(const std::vector<int>& data, const HuffCode& code,
+                BitBufferWriter& out) {
     for (int d : data)
         code.encodeSymbol(d, out);
 }
 
-void Huffman::decode(BitBufferReader& in, U64 nSymbols, const HuffCode& code,
-                     std::vector<int>& data) {
+void
+Huffman::decode(BitBufferReader& in, U64 nSymbols, const HuffCode& code,
+                std::vector<int>& data) {
     data.reserve(nSymbols);
     while (nSymbols-- != 0)
         data.push_back(code.decodeSymbol(in));

@@ -81,7 +81,8 @@ WdlCompress::WdlCompress(const std::string& tbType) {
     std::cout << "size:" << posIndex->tbSize() << std::endl;
 }
 
-void WdlCompress::wdlDump(const std::string& outFile) {
+void
+WdlCompress::wdlDump(const std::string& outFile) {
     PosIndex& posIdx = *posIndex;
     const U64 size = posIdx.tbSize();
     std::vector<WDLInfo> data(size);
@@ -102,7 +103,8 @@ void WdlCompress::wdlDump(const std::string& outFile) {
     writeFile(data, outFile);
 }
 
-void WdlCompress::initializeData(std::vector<WDLInfo>& data) {
+void
+WdlCompress::initializeData(std::vector<WDLInfo>& data) {
     PosIndex& posIdx = *posIndex;
     const U64 size = posIdx.tbSize();
     const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
@@ -180,7 +182,8 @@ void WdlCompress::initializeData(std::vector<WDLInfo>& data) {
     std::cout << "bestWtm:" << bestWtm << " bestBtm:" << bestBtm << std::endl;
 }
 
-int WdlCompress::wdlBestCapture(Position& pos) {
+int
+WdlCompress::wdlBestCapture(Position& pos) {
     const bool inCheck = MoveGen::inCheck(pos);
     MoveList moves;
     if (inCheck)
@@ -209,7 +212,8 @@ int WdlCompress::wdlBestCapture(Position& pos) {
     return pos.isWhiteMove() ? best : -best;
 }
 
-void WdlCompress::computeOptimalCaptures(std::vector<WDLInfo>& data) const {
+void
+WdlCompress::computeOptimalCaptures(std::vector<WDLInfo>& data) const {
     PosIndex& posIdx = *posIndex;
     const U64 size = posIdx.tbSize();
     const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
@@ -243,8 +247,9 @@ void WdlCompress::computeOptimalCaptures(std::vector<WDLInfo>& data) const {
     std::cout << std::endl;
 }
 
-void WdlCompress::computeStatistics(const std::vector<WDLInfo>& data,
-                                    std::array<U64,8>& cnt) const {
+void
+WdlCompress::computeStatistics(const std::vector<WDLInfo>& data,
+                               std::array<U64,8>& cnt) const {
     const U64 size = data.size();
     const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
     ThreadPool<std::array<U64,8>> pool(nThreads);
@@ -282,7 +287,8 @@ void WdlCompress::computeStatistics(const std::vector<WDLInfo>& data,
     std::cout << "optCapt:" << (cnt[7] / (double)size) << std::endl;
 }
 
-void WdlCompress::replaceDontCares(std::vector<WDLInfo>& data, BitArray& active) {
+void
+WdlCompress::replaceDontCares(std::vector<WDLInfo>& data, BitArray& active) {
     const U64 size = data.size();
     const U64 batchSize = std::max((U64)128*1024, ((size + 1023) / 1024) & ~63);
     ThreadPool<int> pool(nThreads);
@@ -304,8 +310,9 @@ void WdlCompress::replaceDontCares(std::vector<WDLInfo>& data, BitArray& active)
         ;
 }
 
-void WdlCompress::writeFile(const std::vector<WDLInfo>& data,
-                            const std::string& outFile) const {
+void
+WdlCompress::writeFile(const std::vector<WDLInfo>& data,
+                       const std::string& outFile) const {
     std::ofstream outF(outFile);
     static_assert(sizeof(WDLInfo) == 1, "");
     outF.write((const char*)data.data(), data.size());

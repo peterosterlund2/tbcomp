@@ -22,7 +22,8 @@
 static void idx2Pos(int argc, char* argv[]);
 static void idxTest(const std::string& fen);
 
-static void usage() {
+static void
+usage() {
     std::cerr << "Usage: tbcomp cmd params\n";
     std::cerr << "cmd is one of:\n";
     std::cerr << " test : Run automatic tests\n";
@@ -54,7 +55,8 @@ readFile(std::ifstream& inF, std::vector<U8>& data) {
     inF.read((char*)&data[0], len);
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[]) {
     if (argc < 2)
         usage();
 
@@ -264,7 +266,8 @@ int main(int argc, char* argv[]) {
     }
 }
 
-static void idx2Pos(int argc, char* argv[]) {
+static void
+idx2Pos(int argc, char* argv[]) {
     Position pos;
     pos.setPiece(H6, Piece::WKING);
     pos.setPiece(D8, Piece::BKING);
@@ -303,7 +306,8 @@ static void idx2Pos(int argc, char* argv[]) {
     }
 }
 
-static void idxTest(const std::string& fen) {
+static void
+idxTest(const std::string& fen) {
     Position pos = TextIO::readFEN(fen);
     std::cout << TextIO::asciiBoard(pos);
     PosIndex posIdx(pos);

@@ -44,7 +44,8 @@ TaskRunner<Result>::~TaskRunner() {
 
 template <typename Result>
 template <typename Func>
-void TaskRunner<Result>::addTask(Func func) {
+void
+TaskRunner<Result>::addTask(Func func) {
     auto task = [this,func](int workerNo) {
         Result result = func(workerNo);
         std::unique_lock<std::mutex> L(resultsMutex);
@@ -55,7 +56,8 @@ void TaskRunner<Result>::addTask(Func func) {
 }
 
 template <typename Result>
-bool TaskRunner<Result>::getResult(Result& result) {
+bool
+TaskRunner<Result>::getResult(Result& result) {
     std::unique_lock<std::mutex> L(getResultMutex);
     int dummy;
     if (pool.getResult(dummy)) {
@@ -68,7 +70,8 @@ bool TaskRunner<Result>::getResult(Result& result) {
 }
 
 template <typename Result>
-void TaskRunner<Result>::waitAll() {
+void
+TaskRunner<Result>::waitAll() {
     Result result;
     while (getResult(result))
         ;

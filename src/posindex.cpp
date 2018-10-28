@@ -87,7 +87,8 @@ PosIndex::tbSize() const {
     return ret;
 }
 
-static Position swapColors(const Position& pos) {
+static Position
+swapColors(const Position& pos) {
     Position sym;
     sym.setWhiteMove(!pos.isWhiteMove());
     U64 occupied = pos.occupiedBB();
@@ -243,7 +244,8 @@ PosIndex::index2Pos(U64 idx, Position& pos) const {
     return true;
 }
 
-void PosIndex::computeCombInverse(int a, int b, std::vector<U64>& vec) const {
+void
+PosIndex::computeCombInverse(int a, int b, std::vector<U64>& vec) const {
     U64 squares = (1ULL << b) - 1;
     U64 last = squares << (a - b);
 

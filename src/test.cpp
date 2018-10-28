@@ -338,7 +338,8 @@ Test::testSymArrayEmptyChunk() {
     }
 }
 
-static std::vector<int> getSymVec(SymbolArray& sa) {
+static std::vector<int>
+getSymVec(SymbolArray& sa) {
     std::vector<int> symVec;
     SymbolArray::iterator it = sa.iterAtChunk(0);
     while (true) {

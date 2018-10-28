@@ -14,7 +14,8 @@ template<typename T> struct MakePrintable { static T convert(const T& v) { retur
 template<> struct MakePrintable<U8> { static int convert(const U8& v) { return v; } };
 
 template<typename T>
-std::ostream& operator<<(std::ostream& os, const std::vector<T>& v) {
+std::ostream&
+operator<<(std::ostream& os, const std::vector<T>& v) {
     os << "[";
     bool first = true;
     for (const T& e : v) {

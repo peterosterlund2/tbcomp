@@ -109,49 +109,59 @@ private:
     U32 mask;
 };
 
-inline void RePairSymbol::setPrimitive(U16 sym) {
+inline void
+RePairSymbol::setPrimitive(U16 sym) {
     left = INV;
     right = sym;
     len = 1;
     depth = 1;
 }
 
-inline void RePairSymbol::setPair(U16 lSym, U16 rSym) {
+inline void
+RePairSymbol::setPair(U16 lSym, U16 rSym) {
     left = lSym;
     right = rSym;
 }
 
-inline void RePairSymbol::setLengthDepth(U64 l, int d) {
+inline void
+RePairSymbol::setLengthDepth(U64 l, int d) {
     len = l;
     depth = d;
 }
 
-inline bool RePairSymbol::isPrimitive() const {
+inline bool
+RePairSymbol::isPrimitive() const {
     return left == INV;
 }
 
-inline U16 RePairSymbol::getValue() const {
+inline U16
+RePairSymbol::getValue() const {
     return right;
 }
 
-inline U16 RePairSymbol::getLeft() const {
+inline U16
+RePairSymbol::getLeft() const {
     return left;
 }
 
-inline U16 RePairSymbol::getRight() const {
+inline U16
+RePairSymbol::getRight() const {
     return right;
 }
 
-inline U64 RePairSymbol::getLength() const {
+inline U64
+RePairSymbol::getLength() const {
     return len;
 }
 
-inline int RePairSymbol::getDepth() const {
+inline int
+RePairSymbol::getDepth() const {
     return depth;
 }
 
 
-inline RePairDeComp::RePairDeComp(const U8* inData)
+inline
+RePairDeComp::RePairDeComp(const U8* inData)
     : data(inData) {
 }
 
