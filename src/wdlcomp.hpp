@@ -48,6 +48,8 @@ public:
 
 private:
     void initializeData(std::vector<WDLInfo>& data);
+    /** Return WDL score (white perspective) for best capture. */
+    static int wdlBestCapture(Position& pos);
     void computeOptimalCaptures(std::vector<WDLInfo>& data) const;
     void computeStatistics(const std::vector<WDLInfo>& data, std::array<U64,8>& cnt) const;
     void replaceDontCares(std::vector<WDLInfo>& data, BitArray& active);

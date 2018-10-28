@@ -120,9 +120,9 @@ void WdlCompress::initializeData(std::vector<WDLInfo>& data) {
                 bool valid = posIdx.index2Pos(idx, pos);
                 if (valid && MoveGen::canTakeKing(pos))
                     valid = false;
-                int val;
+                int wdl;
                 if (!valid) {
-                    val = 3; // Invalid
+                    wdl = 3; // Invalid
                 } else {
                     const bool inCheck = MoveGen::inCheck(pos);
                     MoveList moves;
@@ -138,22 +138,27 @@ void WdlCompress::initializeData(std::vector<WDLInfo>& data) {
                         }
                     }
                     if (!hasLegalMoves) {
-                        val = 4; // Game end
+                        wdl = 4; // Game end
                     } else {
-                        int success;
-                        int wdl = Syzygy::probe_wdl(pos, &success);
-                        if (!success)
-                            throw ChessParseError("RTB probe failed, pos:" + TextIO::toFEN(pos));
-                        if (pos.isWhiteMove()) {
-                            bestWtm = std::max(bestWtm, wdl);
+                        int captWdl = wdlBestCapture(pos);
+                        data[idx].setCaptureWdl(captWdl);
+                        if (captWdl == (pos.isWhiteMove() ? 2 : -2)) {
+                            wdl = captWdl;
                         } else {
-                            wdl = -wdl;
-                            bestBtm = std::min(bestBtm, wdl);
+                            int success;
+                            wdl = Syzygy::probe_wdl(pos, &success);
+                            if (!success)
+                                throw ChessParseError("RTB probe failed, pos:" + TextIO::toFEN(pos));
+                            if (pos.isWhiteMove()) {
+                                bestWtm = std::max(bestWtm, wdl);
+                            } else {
+                                wdl = -wdl;
+                                bestBtm = std::min(bestBtm, wdl);
+                            }
                         }
-                        val = wdl;
                     }
                 }
-                data[idx].setWdl(val);
+                data[idx].setWdl(wdl);
             }
             return std::make_pair(bestWtm, bestBtm);
         };
@@ -175,6 +180,35 @@ void WdlCompress::initializeData(std::vector<WDLInfo>& data) {
     std::cout << "bestWtm:" << bestWtm << " bestBtm:" << bestBtm << std::endl;
 }
 
+int WdlCompress::wdlBestCapture(Position& pos) {
+    const bool inCheck = MoveGen::inCheck(pos);
+    MoveList moves;
+    if (inCheck)
+        MoveGen::checkEvasions(pos, moves);
+    else
+        MoveGen::pseudoLegalCaptures(pos, moves);
+    int best = -2;
+    for (int i = 0; i < moves.size; i++) {
+        const Move& m = moves[i];
+        if ((pos.getPiece(m.to()) == Piece::EMPTY) ||
+            !MoveGen::isLegal(pos, m, inCheck))
+            continue;
+        UndoInfo ui;
+        pos.makeMove(m, ui);
+        int success;
+        int wdl = -Syzygy::probe_wdl(pos, &success);
+        if (!success)
+            throw ChessParseError("RTB probe failed, pos:" + TextIO::toFEN(pos));
+        pos.unMakeMove(m, ui);
+        if (wdl > best) {
+            best = wdl;
+            if (best >= 2)
+                break;
+        }
+    }
+    return pos.isWhiteMove() ? best : -best;
+}
+
 void WdlCompress::computeOptimalCaptures(std::vector<WDLInfo>& data) const {
     PosIndex& posIdx = *posIndex;
     const U64 size = posIdx.tbSize();
@@ -191,40 +225,9 @@ void WdlCompress::computeOptimalCaptures(std::vector<WDLInfo>& data) const {
                 for (U64 m = pos.occupiedBB(); m; ) // Clear position
                     pos.clearPiece(BitBoard::extractSquare(m));
                 posIdx.index2Pos(idx, pos);
-                int success;
-                UndoInfo ui;
-                bool optCapt = false;
-                const bool inCheck = MoveGen::inCheck(pos);
-                MoveList moves;
-                if (inCheck)
-                    MoveGen::checkEvasions(pos, moves);
-                else
-                    MoveGen::pseudoLegalMoves(pos, moves);
-                for (int i = 0; i < moves.size; i++) {
-                    const Move& m = moves[i];
-                    if ((pos.getPiece(m.to()) == Piece::EMPTY) ||
-                            !MoveGen::isLegal(pos, m, inCheck))
-                        continue;
-                    pos.makeMove(m, ui);
-                    int wdl = -Syzygy::probe_wdl(pos, &success);
-                    if (!success)
-                        throw ChessParseError("RTB probe failed, pos:" + TextIO::toFEN(pos));
-                    pos.unMakeMove(m, ui);
-                    if (pos.isWhiteMove()) {
-                        if (wdl == bestWtm) {
-                            optCapt = true;
-                            break;
-                        }
-                    } else {
-                        wdl = -wdl;
-                        if (wdl == bestBtm) {
-                            optCapt = true;
-                            break;
-                        }
-                    }
-                }
-                if (optCapt)
-                    data[idx].setWdl(5);
+                int captWdl = data[idx].getCaptureWdl();
+                if (captWdl == (pos.isWhiteMove() ? bestWtm : bestBtm))
+                    data[idx].setWdl(5); // Optimal capture
             }
             return 0;
         };
