@@ -75,8 +75,14 @@ PosIndex::PosIndex(const Position& pos) {
         np += bPieces[i];
     }
 
+    for (int i = 0; i < (int)wFactors.size(); i++) {
+        wDividers[i] = Divider(wFactors[i]);
+        bDividers[i] = Divider(bFactors[i]);
+    }
+
     sideFactor = bwSymmetric ? 1 : 2;
     kingFactor = hasPawn ? nKingPawn : nKingNoPawn;
+    kingDivider = Divider(kingFactor);
 }
 
 U64
@@ -182,17 +188,14 @@ PosIndex::index2Pos(U64 idx, Position& pos) const {
     std::array<int,5> wIdx, bIdx;
 
     for (int i = 0; i < 5; i++) {
-        int f = bFactors[i];
-        bIdx[i] = idx % f; idx /= f;
-        f = wFactors[i];
-        wIdx[i] = idx % f; idx /= f;
+        bIdx[i] = bDividers[i].modDiv(idx);
+        wIdx[i] = wDividers[i].modDiv(idx);
     }
 
-    int kingIdx = idx % kingFactor;
+    int kingIdx = kingDivider.modDiv(idx);
 
     int side = 0;
     if (sideFactor > 1) {
-        idx /= kingFactor;
         side = idx;
     }
     pos.setWhiteMove(side == 0);

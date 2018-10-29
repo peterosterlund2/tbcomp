@@ -3,9 +3,63 @@
 
 #include "util/util.hpp"
 #include <array>
+#include <cassert>
 
 class Position;
 
+/** Fast computation of many divisions/remainders using the same denominator. */
+#if 0
+class Divider {
+public:
+    Divider() : d(1) {}
+    explicit Divider(U32 d) : d(d) {}
+    U32 modDiv(U64& n) const {
+        U64 q = n / d;
+        U32 ret = n - q * d;
+        n = q;
+        return ret;
+    }
+private:
+    U32 d;
+};
+#else
+class Divider {
+    using U128 = unsigned __int128;
+public:
+    Divider() : m(0), s(0), d(0) {}
+    explicit Divider(U32 d) : d(d) {
+        assert(d == 1 || (d & (d - 1))); // Division by power of 2 not supported
+        s = floorLog2(d);
+        m = (((U128)1 << (64 + s)) + (d - 1)) / d;
+    };
+
+    U32 modDiv(U64& n) const {
+        if (d == 1)
+            return 0;
+        U64 q = ((U128)n * m) >> 64;
+        q >>= s;
+        U32 ret = n - q * d;
+        n = q;
+        return ret;
+    }
+
+private:
+    static int floorLog2(U32 x) {
+        int ret = 0;
+        while (x > 1) {
+            ret++;
+            x /= 2;
+        }
+        return ret;
+    }
+
+    U64 m;
+    int s;
+    U32 d;
+};
+#endif
+
+/** Defines an invertible mapping between chess positions and integers. */
 class PosIndex {
 public:
     /** Constructor. */
@@ -48,8 +102,11 @@ private:
 
     int sideFactor;             // Number of choices for wtm/!wtm (1 or 2)
     int kingFactor;             // Number of king configurations
+    Divider kingDivider;        // Fast division by kingFactor
     std::array<int,5> wFactors; // Number of configurations for white piece types
     std::array<int,5> bFactors; // Number of configurations for black piece types
+    std::array<Divider,5> wDividers; // Fast division by wFactors
+    std::array<Divider,5> bDividers; // Fast division by bFactors
 
     // wCombInv[pieceTypeNo][idx] = bitboard of occupied squares corresponding to idx
     std::array<std::vector<U64>,5> wCombInv;
