@@ -43,7 +43,7 @@ private:
     void makeEncoderTree();
 
     /** Apply decision tree encoding for all applicable values in data. */
-    void encodeValues();
+    void encodeValues(int nThreads);
 
     DT::NodeFactory& nodeFactory;
     const PosIndex& posIdx;

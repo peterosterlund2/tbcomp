@@ -2,6 +2,7 @@
 #include "bitarray.hpp"
 #include "posindex.hpp"
 #include "position.hpp"
+#include "threadpool.hpp"
 #include <cassert>
 
 
@@ -31,7 +32,7 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
     makeEncoderTree();
     std::cout << '\n' << root->describe(0) << std::flush;
 
-    encodeValues();
+    encodeValues(nThreads);
 }
 
 void
@@ -119,24 +120,36 @@ DecisionTree::makeEncoderTree() {
 }
 
 void
-DecisionTree::encodeValues() {
-    U64 nPos = posIdx.tbSize();
-    Position pos;
-    std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
-    for (U64 idx = 0; idx < nPos; idx++) {
-        if (!active.get(idx))
-            continue;
+DecisionTree::encodeValues(int nThreads) {
+    const U64 size = posIdx.tbSize();
+    const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
+    ThreadPool<int> pool(nThreads);
+    for (U64 b = 0; b < size; b += batchSize) {
+        auto task = [this,size,batchSize,b](int workerNo) {
+            Position pos;
+            std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
+            U64 end = std::min(b + batchSize, size);
+            for (U64 idx = b; idx < end; idx++) {
+                if (!active.get(idx))
+                    continue;
 
-        for (U64 m = pos.occupiedBB(); m; ) // Clear position
-            pos.clearPiece(BitBoard::extractSquare(m));
-        bool valid = posIdx.index2Pos(idx, pos);
-        assert(valid);
-        ctx->init(pos, data, idx);
+                for (U64 m = pos.occupiedBB(); m; ) // Clear position
+                    pos.clearPiece(BitBoard::extractSquare(m));
+                bool valid = posIdx.index2Pos(idx, pos);
+                assert(valid);
+                ctx->init(pos, data, idx);
 
-        int value = data.getValue(idx);
-        int encVal = root->encodeValue(pos, value, *ctx);
-        data.setEncoded(idx, encVal);
+                int value = data.getValue(idx);
+                int encVal = root->encodeValue(pos, value, *ctx);
+                data.setEncoded(idx, encVal);
+            }
+            return 0;
+        };
+        pool.addTask(task);
     }
+    int dummy;
+    while (pool.getResult(dummy))
+        ;
 }
 
 void

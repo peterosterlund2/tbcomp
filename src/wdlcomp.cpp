@@ -97,7 +97,7 @@ WdlCompress::wdlDump(const std::string& outFile) {
     WDLNodeFactory factory;
     WDLUncompressedData uncompData(data);
     DecisionTree dt(factory, posIdx, uncompData, active);
-    dt.computeTree(10, 1);
+    dt.computeTree(10, nThreads);
 
     writeFile(data, outFile);
 }
