@@ -98,8 +98,7 @@ StatsCollectorNode::encodeValue(const Position& pos, int value, EvalContext& ctx
 
 double
 StatsCollectorNode::entropy() const {
-    assert(false);
-    return 0.0;
+    return getBest()->entropy();
 }
 
 std::unique_ptr<StatsNode>

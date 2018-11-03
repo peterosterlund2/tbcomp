@@ -18,21 +18,22 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
 
     for (int lev = 0; lev < maxDepth; lev++) {
         updateStats();
-        std::cout << '\n' << root->describe(0) << std::flush;
+        std::cout << '\n' << root->describe(0) << "lev:" << lev
+                  << " entropy:" << root->entropy()
+                  << " numLeafs:" << getNumLeafNodes() << std::endl;
 
         bool finished = !selectBestPreds(lev + 1 < maxDepth);
         if (finished)
             break;
     }
-    std::cout << "entropy:" << root->entropy() << std::endl;
 
     simplifyTree();
-    std::cout << '\n' << root->describe(0) << std::flush;
-    std::cout << "entropy:" << root->entropy() << std::endl;
+    std::cout << '\n' << root->describe(0) << "entropy:" << root->entropy()
+              << " numLeafs:" << getNumLeafNodes() << std::endl;
 
     makeEncoderTree();
-    std::cout << '\n' << root->describe(0) << std::flush;
-    std::cout << "numLeafs:" << getNumLeafNodes() << std::endl;
+    std::cout << '\n' << root->describe(0)
+              << "numLeafs:" << getNumLeafNodes() << std::endl;
 
     encodeValues(nThreads);
 }
