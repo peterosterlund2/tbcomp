@@ -1,9 +1,41 @@
 #include "wdlnode.hpp"
 #include "textio.hpp"
+#include <numeric>
+#include <cmath>
+
+
+bool
+WDLStats::better(const DT::Node* best,
+                 const WDLStats& statsFalse,
+                 const WDLStats& statsTrue) {
+    if (!best)
+        return true;
+    auto bestP = dynamic_cast<const DT::PredicateNode*>(best);
+    if (!bestP)
+        return true;
+    auto childL = dynamic_cast<const WDLStatsNode*>(bestP->left.get());
+    auto childR = dynamic_cast<const WDLStatsNode*>(bestP->right.get());
+    if (!childL || !childR)
+        return true;
+
+    double currEntropy = childL->stats.adjustedEntropy() +
+                         childR->stats.adjustedEntropy();
+    double newEntropy = statsFalse.adjustedEntropy() +
+                        statsTrue.adjustedEntropy();
+
+    return currEntropy > newEntropy;
+}
 
 double
 WDLStats::entropy() const {
     return ::entropy(count.begin(), count.end());
+}
+
+double
+WDLStats::adjustedEntropy() const {
+    double sum = std::accumulate(count.begin(), count.end(), 0);
+    double bits = sum > 0 ? std::log2(sum) : 0;
+    return entropy() + (64 - bits) * 1e-4;
 }
 
 std::string

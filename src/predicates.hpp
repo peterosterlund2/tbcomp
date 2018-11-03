@@ -93,7 +93,7 @@ public:
 
     /** Update best if this node has lower entropy. */
     void updateBest(std::unique_ptr<DT::Node>& best) const {
-        if (!best || best->entropy() > stats[0].entropy() + stats[1].entropy())
+        if (Stats::better(best.get(), stats[0], stats[1]))
             best = Stats::makeNode(pred, stats[0], stats[1]);
     }
 private:
@@ -190,7 +190,7 @@ public:
         for (int i = 0; i < N-1; i++) {
             statsTrue.addStats(stats[i]);
             statsFalse.subStats(stats[i]);
-            if (!best || best->entropy() > statsTrue.entropy() + statsFalse.entropy())
+            if (Stats::better(best.get(), statsFalse, statsTrue))
                 best = Stats::makeNode(MultiPredBound<MultiPred>(pred, minVal + i),
                                        statsFalse, statsTrue);
         }

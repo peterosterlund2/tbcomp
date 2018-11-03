@@ -12,6 +12,12 @@ struct WDLStats {
 
     WDLStats() : count{} {}
 
+    /** Return true if making a new predicate node from statsFalse/True would
+     *  be better (lower entropy) than keeping the current best node. */
+    static bool better(const DT::Node* best,
+                       const WDLStats& statsFalse,
+                       const WDLStats& statsTrue);
+
     template <typename Pred>
     static std::unique_ptr<DT::Node> makeNode(const Pred& pred,
                                               const WDLStats& statsFalse,
@@ -59,6 +65,9 @@ struct WDLStats {
 
     /** Entropy measured in number of bytes. */
     double entropy() const;
+
+    /** Entropy adjusted to prefer an even split when the real entropy is the same. */
+    double adjustedEntropy() const;
 
     /** String representation of data, for debugging. */
     std::string describe() const;
