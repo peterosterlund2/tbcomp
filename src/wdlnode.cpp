@@ -117,6 +117,10 @@ WDLStatsCollectorNode::WDLStatsCollectorNode(DT::EvalContext& ctx) {
     darkSquare.reserve(nPieces);
     for (int i = 0; i < nPieces; i++)
         darkSquare.emplace_back(i);
+    for (int i = 0; i < nPieces; i++)
+        fileRankW.emplace_back(i);
+    for (int i = 0; i < nPieces; i++)
+        fileRankB.emplace_back(i);
 }
 
 bool
@@ -129,6 +133,10 @@ WDLStatsCollectorNode::applyData(const Position& pos, int value, DT::EvalContext
     oppoB.applyData(pos, ctx, value);
     pRace.applyData(pos, ctx, value);
     for (auto& p : darkSquare)
+        p.applyData(pos, ctx, value);
+    for (auto& p : fileRankW)
+        p.applyData(pos, ctx, value);
+    for (auto& p : fileRankB)
         p.applyData(pos, ctx, value);
     return true;
 }
@@ -144,6 +152,10 @@ WDLStatsCollectorNode::getBest() const {
     oppoB.updateBest(best);
     pRace.updateBest(best);
     for (auto& p : darkSquare)
+        p.updateBest(best);
+    for (auto& p : fileRankW)
+        p.updateBest(best);
+    for (auto& p : fileRankB)
         p.updateBest(best);
     return best;
 }

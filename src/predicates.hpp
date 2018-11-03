@@ -67,7 +67,7 @@ public:
 
 class DarkSquarePredicate : public Predicate {
 public:
-    DarkSquarePredicate(int pieceNo) : pieceNo(pieceNo) {}
+    explicit DarkSquarePredicate(int pieceNo) : pieceNo(pieceNo) {}
     bool eval(const Position& pos, DT::EvalContext& ctx) const override {
         int sq = ctx.getPieceSquare(pieceNo, pos);
         return BitBoard::maskDarkSq & (1ULL << sq);
@@ -135,6 +135,23 @@ public:
     }
 };
 
+template <bool file>
+class FileRankPredicate : public MultiPredicate {
+public:
+    constexpr static int minVal = 0;
+    constexpr static int maxVal = 7;
+    explicit FileRankPredicate(int pieceNo) : pieceNo(pieceNo) {}
+    int eval(const Position& pos, DT::EvalContext& ctx) const override {
+        int sq = ctx.getPieceSquare(pieceNo, pos);
+        return file ? Square::getX(sq) : Square::getY(sq);
+    }
+    std::string name() const override {
+        return (file ? "file" : "rank") + num2Str(pieceNo);
+    }
+private:
+    int pieceNo;
+};
+
 // ----------------------------------------------------------------------------
 
 template <typename MultiPred>
@@ -157,6 +174,9 @@ class MultiPredStatsCollector {
     constexpr static int minVal = MultiPred::minVal;
     constexpr static int maxVal = MultiPred::maxVal;
 public:
+    template <typename... Args>
+    explicit MultiPredStatsCollector(Args&&... args) : pred(std::forward<Args>(args)...) {}
+
     void applyData(const Position& pos, DT::EvalContext& ctx, int value) {
         int idx = pred.eval(pos, ctx) - minVal;
         stats[idx].applyData(value);

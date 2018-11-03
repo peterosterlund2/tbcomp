@@ -99,6 +99,8 @@ public:
     StatsCollector<BishopColorPredicate<false>, WDLStats> oppoB;
     MultiPredStatsCollector<PawnRacePredicate, WDLStats> pRace;
     std::vector<StatsCollector<DarkSquarePredicate, WDLStats>> darkSquare;
+    std::vector<MultiPredStatsCollector<FileRankPredicate<true>, WDLStats>> fileRankW;
+    std::vector<MultiPredStatsCollector<FileRankPredicate<false>, WDLStats>> fileRankB;
 };
 
 class WDLEncoderNode : public DT::EncoderNode {
