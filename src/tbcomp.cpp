@@ -40,7 +40,7 @@ usage() {
     std::cerr << " idx2pos nwq nwr nwb nwn nwp  nbq nbr nbb nbn nbp  idx\n";
     std::cerr << " idxtest fen\n";
 
-    std::cerr << " wdldump tbType\n";
+    std::cerr << " wdldump tbType [maxTreeDepth]\n";
 
     std::cerr << std::flush;
     ::exit(2);
@@ -253,10 +253,13 @@ main(int argc, char* argv[]) {
             idxTest(fen);
 
         } else if (cmd == "wdldump") {
-            if (argc != 3)
+            if (argc < 3 || argc > 4)
                 usage();
+            int maxTreeDepth = 10;
+            if (argc > 3)
+                maxTreeDepth = std::atoi(argv[3]);
             WdlCompress wdlComp(argv[2]);
-            wdlComp.wdlDump("out.bin");
+            wdlComp.wdlDump("out.bin", maxTreeDepth);
 
         } else {
             usage();

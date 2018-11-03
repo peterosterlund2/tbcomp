@@ -15,7 +15,7 @@ class WdlCompress {
 public:
     WdlCompress(const std::string& tbType);
 
-    void wdlDump(const std::string& outFile);
+    void wdlDump(const std::string& outFile, int maxTreeDepth);
 
 private:
     void initializeData(std::vector<WDLInfo>& data);
