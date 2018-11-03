@@ -406,6 +406,16 @@ Test::testSwapColors() {
             Position posType = TextIO::readFEN("KRR/8/8/8/8/8/8/kq w");
             PosIndex pi(posType);
             pi.index2Pos(1000, pos2);
+            assert(pi.getPieceType(0) == Piece::WKING);
+            assert(pi.getPieceType(1) == Piece::BKING);
+            assert(pi.getPieceType(2) == Piece::WROOK);
+            assert(pi.getPieceType(3) == Piece::WROOK);
+            assert(pi.getPieceType(4) == Piece::BQUEEN);
+            assert(pi.getPieceSquare(0, posType) == A8);
+            assert(pi.getPieceSquare(1, posType) == A1);
+            assert(pi.getPieceSquare(2, posType) == B8);
+            assert(pi.getPieceSquare(3, posType) == C8);
+            assert(pi.getPieceSquare(4, posType) == B1);
         }
         assert(pos1 == pos2);
     }

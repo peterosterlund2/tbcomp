@@ -85,6 +85,8 @@ public:
 
 class WDLStatsCollectorNode : public DT::StatsCollectorNode {
 public:
+    explicit WDLStatsCollectorNode(DT::EvalContext& ctx);
+
     bool applyData(const Position& pos, int value, DT::EvalContext& ctx) override;
 
     std::unique_ptr<DT::Node> getBest() const override;
@@ -96,6 +98,7 @@ public:
     StatsCollector<BishopColorPredicate<true>, WDLStats> sameB;
     StatsCollector<BishopColorPredicate<false>, WDLStats> oppoB;
     MultiPredStatsCollector<PawnRacePredicate, WDLStats> pRace;
+    std::vector<StatsCollector<DarkSquarePredicate, WDLStats>> darkSquare;
 };
 
 class WDLEncoderNode : public DT::EncoderNode {
@@ -169,7 +172,7 @@ private:
 
 class WDLNodeFactory : public DT::NodeFactory {
 public:
-    std::unique_ptr<DT::StatsCollectorNode> makeStatsCollector() override;
+    std::unique_ptr<DT::StatsCollectorNode> makeStatsCollector(DT::EvalContext& ctx) override;
 
     std::unique_ptr<DT::EvalContext> makeEvalContext(const PosIndex& posIdx) override;
 };

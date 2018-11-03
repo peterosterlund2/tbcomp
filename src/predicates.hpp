@@ -10,7 +10,7 @@
 
 class WTMPredicate : public Predicate {
 public:
-    bool eval(const Position& pos) const override {
+    bool eval(const Position& pos, DT::EvalContext& ctx) const override {
         return pos.isWhiteMove();
     }
     std::string name() const override {
@@ -20,7 +20,7 @@ public:
 
 class InCheckPredicate : public Predicate {
 public:
-    bool eval(const Position& pos) const override {
+    bool eval(const Position& pos, DT::EvalContext& ctx) const override {
         return MoveGen::inCheck(pos);
     }
     std::string name() const override {
@@ -32,7 +32,7 @@ template <bool white>
 class BishopPairPredicate : public Predicate {
 public:
     BishopPairPredicate() {}
-    bool eval(const Position& pos) const override {
+    bool eval(const Position& pos, DT::EvalContext& ctx) const override {
         U64 b = pos.pieceTypeBB(white ? Piece::WBISHOP : Piece::BBISHOP);
         return (b & BitBoard::maskDarkSq) &&
                 (b & BitBoard::maskLightSq);
@@ -47,7 +47,7 @@ template <bool sameColor>
 class BishopColorPredicate : public Predicate {
 public:
     BishopColorPredicate() {}
-    bool eval(const Position& pos) const override {
+    bool eval(const Position& pos, DT::EvalContext& ctx) const override {
         U64 wb = pos.pieceTypeBB(Piece::WBISHOP);
         U64 bb = pos.pieceTypeBB(Piece::BBISHOP);
         U64 d = BitBoard::maskDarkSq;
@@ -65,13 +65,30 @@ public:
     }
 };
 
+class DarkSquarePredicate : public Predicate {
+public:
+    DarkSquarePredicate(int pieceNo) : pieceNo(pieceNo) {}
+    bool eval(const Position& pos, DT::EvalContext& ctx) const override {
+        int sq = ctx.getPieceSquare(pieceNo, pos);
+        return BitBoard::maskDarkSq & (1ULL << sq);
+    }
+    std::string name() const override {
+        return "darkSq" + num2Str(pieceNo);
+    }
+private:
+    int pieceNo;
+};
+
 // ----------------------------------------------------------------------------
 
 template <typename Pred, typename Stats>
 class StatsCollector {
 public:
-    void applyData(const Position& pos, int value) {
-        stats[pred.eval(pos)].applyData(value);
+    template <typename... Args>
+    explicit StatsCollector(Args&&... args) : pred(std::forward<Args>(args)...) {}
+
+    void applyData(const Position& pos, DT::EvalContext& ctx, int value) {
+        stats[pred.eval(pos,ctx)].applyData(value);
     }
 
     /** Update best if this node has lower entropy. */
@@ -91,7 +108,7 @@ public:
     virtual ~MultiPredicate() = default;
 
     /** Return predicate value for "pos". */
-    virtual int eval(const Position& pos) const = 0;
+    virtual int eval(const Position& pos, DT::EvalContext& ctx) const = 0;
 
     /** For debugging. */
     virtual std::string name() const = 0;
@@ -102,7 +119,7 @@ public:
     constexpr static int minVal = -5;
     constexpr static int maxVal = 5;
 
-    int eval(const Position& pos) const override {
+    int eval(const Position& pos, DT::EvalContext& ctx) const override {
         U64 wPawnMask = pos.pieceTypeBB(Piece::WPAWN);
         U64 bPawnMask = pos.pieceTypeBB(Piece::BPAWN);
         int wRank = wPawnMask == 0 ? 1 : Square::getY(BitBoard::extractSquare(wPawnMask));
@@ -124,8 +141,8 @@ template <typename MultiPred>
 class MultiPredBound : public Predicate {
 public:
     MultiPredBound(const MultiPred& pred, int lim) : pred(pred), limit(lim) {}
-    bool eval(const Position& pos) const override {
-        return pred.eval(pos) <= limit;
+    bool eval(const Position& pos, DT::EvalContext& ctx) const override {
+        return pred.eval(pos, ctx) <= limit;
     }
     std::string name() const override {
         return pred.name() + "<=" + num2Str(limit);
@@ -140,8 +157,8 @@ class MultiPredStatsCollector {
     constexpr static int minVal = MultiPred::minVal;
     constexpr static int maxVal = MultiPred::maxVal;
 public:
-    void applyData(const Position& pos, int value) {
-        int idx = pred.eval(pos) - minVal;
+    void applyData(const Position& pos, DT::EvalContext& ctx, int value) {
+        int idx = pred.eval(pos, ctx) - minVal;
         stats[idx].applyData(value);
     }
 

@@ -1,5 +1,4 @@
 #include "posindex.hpp"
-#include "position.hpp"
 #include <algorithm>
 #include <cassert>
 #include <climits>
@@ -83,6 +82,32 @@ PosIndex::PosIndex(const Position& pos) {
     sideFactor = bwSymmetric ? 1 : 2;
     kingFactor = hasPawn ? nKingPawn : nKingNoPawn;
     kingDivider = Divider(kingFactor);
+
+    pieceType[0] = Piece::WKING;
+    pieceTypeIdx[0] = 0;
+    pieceType[1] = Piece::BKING;
+    pieceTypeIdx[1] = 0;
+    int idx = 2;
+    for (int c = 0; c < 2; c++) {
+        for (int i = 0; i < (int)wPieces.size(); i++) {
+            Piece::Type pt;
+            switch (i) {
+            case 0: pt = (c == 0) ? Piece::WQUEEN  : Piece::BQUEEN;  break;
+            case 1: pt = (c == 0) ? Piece::WROOK   : Piece::BROOK;   break;
+            case 2: pt = (c == 0) ? Piece::WBISHOP : Piece::BBISHOP; break;
+            case 3: pt = (c == 0) ? Piece::WKNIGHT : Piece::BKNIGHT; break;
+            case 4: pt = (c == 0) ? Piece::WPAWN   : Piece::BPAWN;   break;
+            default: assert(false);
+            }
+            int np = c == 0 ? wPieces[i] : bPieces[i];
+            for (int j = 0; j < np; j++) {
+                pieceType[idx] = pt;
+                pieceTypeIdx[idx] = j;
+                idx++;
+            }
+        }
+    }
+    nPieces = idx;
 }
 
 U64

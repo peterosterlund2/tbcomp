@@ -5,6 +5,9 @@
 #include <cmath>
 
 class Position;
+namespace DT {
+    class EvalContext;
+}
 
 
 class Predicate {
@@ -12,7 +15,7 @@ public:
     virtual ~Predicate() = default;
 
     /** Return true if predicate is true for "pos". */
-    virtual bool eval(const Position& pos) const = 0;
+    virtual bool eval(const Position& pos, DT::EvalContext& ctx) const = 0;
 
     /** For debugging. */
     virtual std::string name() const = 0;

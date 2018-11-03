@@ -112,15 +112,24 @@ WDLStatsNode::getEncoder() const {
 
 // ------------------------------------------------------------
 
+WDLStatsCollectorNode::WDLStatsCollectorNode(DT::EvalContext& ctx) {
+    int nPieces = ctx.numPieces();
+    darkSquare.reserve(nPieces);
+    for (int i = 0; i < nPieces; i++)
+        darkSquare.emplace_back(i);
+}
+
 bool
 WDLStatsCollectorNode::applyData(const Position& pos, int value, DT::EvalContext& ctx) {
-    wtm.applyData(pos, value);
-    inCheck.applyData(pos, value);
-    bPairW.applyData(pos, value);
-    bPairB.applyData(pos, value);
-    sameB.applyData(pos, value);
-    oppoB.applyData(pos, value);
-    pRace.applyData(pos, value);
+    wtm.applyData(pos, ctx, value);
+    inCheck.applyData(pos, ctx, value);
+    bPairW.applyData(pos, ctx, value);
+    bPairB.applyData(pos, ctx, value);
+    sameB.applyData(pos, ctx, value);
+    oppoB.applyData(pos, ctx, value);
+    pRace.applyData(pos, ctx, value);
+    for (auto& p : darkSquare)
+        p.applyData(pos, ctx, value);
     return true;
 }
 
@@ -134,6 +143,8 @@ WDLStatsCollectorNode::getBest() const {
     sameB.updateBest(best);
     oppoB.updateBest(best);
     pRace.updateBest(best);
+    for (auto& p : darkSquare)
+        p.updateBest(best);
     return best;
 }
 
@@ -208,8 +219,8 @@ WDLEncoderNode::hasEntropy() const {
 // ------------------------------------------------------------
 
 std::unique_ptr<DT::StatsCollectorNode>
-WDLNodeFactory::makeStatsCollector() {
-    return make_unique<WDLStatsCollectorNode>();
+WDLNodeFactory::makeStatsCollector(DT::EvalContext& ctx) {
+    return make_unique<WDLStatsCollectorNode>(ctx);
 };
 
 std::unique_ptr<DT::EvalContext>

@@ -2,10 +2,9 @@
 #define DTNODE_HPP_
 
 #include "util/util.hpp"
+#include "posindex.hpp"
 
 class Predicate;
-class Position;
-class PosIndex;
 
 namespace DT {
 
@@ -71,6 +70,11 @@ public:
     ~EvalContext() = default;
 
     virtual void init(const Position& pos, const UncompressedData& data, U64 idx) = 0;
+
+    int numPieces() const;
+    Piece::Type getPieceType(int pieceNo) const;
+    int getPieceSquare(int pieceNo, const Position& pos) const;
+
 protected:
     const PosIndex& posIdx;
 };
@@ -132,10 +136,25 @@ public:
 
 class NodeFactory {
 public:
-    virtual std::unique_ptr<StatsCollectorNode> makeStatsCollector() = 0;
+    virtual std::unique_ptr<StatsCollectorNode> makeStatsCollector(EvalContext& ctx) = 0;
 
     virtual std::unique_ptr<EvalContext> makeEvalContext(const PosIndex& posIdx) = 0;
 };
+
+inline int
+EvalContext::numPieces() const {
+    return posIdx.numPieces();
+}
+
+inline Piece::Type
+EvalContext::getPieceType(int pieceNo) const {
+    return posIdx.getPieceType(pieceNo);
+}
+
+inline int
+EvalContext::getPieceSquare(int pieceNo, const Position& pos) const {
+    return posIdx.getPieceSquare(pieceNo, pos);
+}
 
 }
 

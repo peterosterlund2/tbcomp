@@ -13,7 +13,8 @@ DecisionTree::DecisionTree(DT::NodeFactory& nodeFactory, const PosIndex& posIdx,
 
 void
 DecisionTree::computeTree(int maxDepth, int nThreads) {
-    root = nodeFactory.makeStatsCollector();
+    std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
+    root = nodeFactory.makeStatsCollector(*ctx);
 
     for (int lev = 0; lev < maxDepth; lev++) {
         updateStats();
@@ -60,19 +61,20 @@ bool
 DecisionTree::selectBestPreds(bool createNewStatsCollector) {
     class Visitor : public DT::Visitor {
     public:
-        Visitor(bool createNewStatsCollector, DT::NodeFactory& nodeFactory) :
-            createNewStatsCollector(createNewStatsCollector), nodeFactory(nodeFactory) {}
+        Visitor(bool createNewStatsCollector, DT::NodeFactory& nodeFactory,
+                DT::EvalContext& ctx) :
+            createNewStatsCollector(createNewStatsCollector), nodeFactory(nodeFactory), ctx(ctx) {}
         void visit(DT::StatsCollectorNode& node, std::unique_ptr<DT::Node>& owner) override {
+            owner = node.getBest();
             if (createNewStatsCollector) {
-                owner = node.getBest();
                 DT::PredicateNode* predNode = dynamic_cast<DT::PredicateNode*>(owner.get());
                 if (predNode) {
                     if (predNode->left->entropy() > 0) {
-                        predNode->left = nodeFactory.makeStatsCollector();
+                        predNode->left = nodeFactory.makeStatsCollector(ctx);
                         anyStatsCollectorCreated = true;
                     }
                     if (predNode->right->entropy() > 0) {
-                        predNode->right = nodeFactory.makeStatsCollector();
+                        predNode->right = nodeFactory.makeStatsCollector(ctx);
                         anyStatsCollectorCreated = true;
                     }
                 }
@@ -80,9 +82,11 @@ DecisionTree::selectBestPreds(bool createNewStatsCollector) {
         }
         const bool createNewStatsCollector;
         DT::NodeFactory& nodeFactory;
+        DT::EvalContext& ctx;
         bool anyStatsCollectorCreated = false;
     };
-    Visitor visitor(createNewStatsCollector, nodeFactory);
+    std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
+    Visitor visitor(createNewStatsCollector, nodeFactory, *ctx);
     root->accept(visitor, root);
     return visitor.anyStatsCollectorCreated;
 }

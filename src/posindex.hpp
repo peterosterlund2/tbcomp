@@ -2,10 +2,10 @@
 #define POSINDEX_HPP_
 
 #include "util/util.hpp"
+#include "position.hpp"
 #include <array>
 #include <cassert>
 
-class Position;
 
 /** Fast computation of many divisions/remainders using the same denominator. */
 #if 0
@@ -68,6 +68,9 @@ public:
     /** Return total number of positions in this tablebase class. */
     U64 tbSize() const;
 
+    /** Return number of pieces, including kings. */
+    int numPieces() const { return nPieces; }
+
     /** Return index in a tablebase corresponding to a position.
      *  "pos" is modified to correspond to the canonical symmetry position.
      *  Castling flags, full move counter and half-move clock are ignored.
@@ -79,6 +82,11 @@ public:
      *  If false is returned, index does not correspond to a valid position.
      *  If true is returned, the position can still be invalid if a king capture is possible. */
     bool index2Pos(U64 idx, Position& pos) const;
+
+    /** Return the piece type of n:th piece. */
+    Piece::Type getPieceType(int pieceNo) const;
+    /** Return the square of the n:th piece. */
+    int getPieceSquare(int pieceNo, const Position& pos) const;
 
     static void staticInitialize();
 
@@ -99,6 +107,9 @@ private:
 
     std::array<int,5> wPieces; // Q, R, B, N, P
     std::array<int,5> bPieces;
+    std::array<Piece::Type,maxPieces> pieceType; // Piece number to piece type
+    std::array<int,maxPieces> pieceTypeIdx;      // Which piece of a given type
+    int nPieces;
 
     int sideFactor;             // Number of choices for wtm/!wtm (1 or 2)
     int kingFactor;             // Number of king configurations
@@ -147,6 +158,22 @@ private:
     static int idxToKingPawn[nKingPawn];
 };
 
+inline Piece::Type
+PosIndex::getPieceType(int pieceNo) const {
+    return pieceType[pieceNo];
+}
+
+inline int
+PosIndex::getPieceSquare(int pieceNo, const Position& pos) const {
+    Piece::Type pt = getPieceType(pieceNo);
+    int n = pieceTypeIdx[pieceNo];
+    U64 m = pos.pieceTypeBB(pt);
+    int sq;
+    do {
+        sq = BitBoard::extractSquare(m);
+    } while (n-- > 0);
+    return sq;
+}
 
 inline U64
 PosIndex::binCoeff(int a, int b) {

@@ -18,12 +18,12 @@ Visitor::visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner) {
 
 bool
 PredicateNode::applyData(const Position& pos, int value, EvalContext& ctx) {
-    return (pred->eval(pos) ? right : left)->applyData(pos, value, ctx);
+    return (pred->eval(pos, ctx) ? right : left)->applyData(pos, value, ctx);
 }
 
 int
 PredicateNode::encodeValue(const Position& pos, int value, EvalContext& ctx) const {
-    return (pred->eval(pos) ? right : left)->encodeValue(pos, value, ctx);
+    return (pred->eval(pos, ctx) ? right : left)->encodeValue(pos, value, ctx);
 }
 
 double
