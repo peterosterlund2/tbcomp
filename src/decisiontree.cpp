@@ -32,6 +32,7 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
 
     makeEncoderTree();
     std::cout << '\n' << root->describe(0) << std::flush;
+    std::cout << "numLeafs:" << getNumLeafNodes() << std::endl;
 
     encodeValues(nThreads);
 }
@@ -121,6 +122,26 @@ DecisionTree::makeEncoderTree() {
     };
     Visitor visitor;
     root->accept(visitor, root);
+}
+
+int
+DecisionTree::getNumLeafNodes() {
+    class Visitor : public DT::Visitor {
+    public:
+        void visit(DT::StatsNode& node, std::unique_ptr<DT::Node>& owner) override {
+            nLeafs++;
+        }
+        void visit(DT::StatsCollectorNode& node, std::unique_ptr<DT::Node>& owner) override {
+            nLeafs++;
+        }
+        void visit(DT::EncoderNode& node, std::unique_ptr<DT::Node>& owner) override {
+            nLeafs++;
+        }
+        int nLeafs = 0;
+    };
+    Visitor visitor;
+    root->accept(visitor, root);
+    return visitor.nLeafs;
 }
 
 void

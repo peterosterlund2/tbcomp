@@ -42,6 +42,9 @@ private:
     /** Replace StatsNode with EncoderNode. */
     void makeEncoderTree();
 
+    /** Return number of leaf nodes in the decision tree. */
+    int getNumLeafNodes();
+
     /** Apply decision tree encoding for all applicable values in data. */
     void encodeValues(int nThreads);
 
