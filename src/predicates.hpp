@@ -31,7 +31,6 @@ public:
 template <bool white>
 class BishopPairPredicate : public Predicate {
 public:
-    BishopPairPredicate() {}
     bool eval(const Position& pos, DT::EvalContext& ctx) const override {
         U64 b = pos.pieceTypeBB(white ? Piece::WBISHOP : Piece::BBISHOP);
         return (b & BitBoard::maskDarkSq) &&
@@ -46,7 +45,6 @@ public:
 template <bool sameColor>
 class BishopColorPredicate : public Predicate {
 public:
-    BishopColorPredicate() {}
     bool eval(const Position& pos, DT::EvalContext& ctx) const override {
         U64 wb = pos.pieceTypeBB(Piece::WBISHOP);
         U64 bb = pos.pieceTypeBB(Piece::BBISHOP);
@@ -186,6 +184,30 @@ public:
     }
 private:
     int pieceNo;
+};
+
+template <bool file, bool absVal>
+class FileRankDeltaPredicate : public MultiPredicate {
+public:
+    constexpr static int minVal = absVal ? 0 : -7;
+    constexpr static int maxVal = 7;
+    FileRankDeltaPredicate(int p1, int p2) : p1(p1), p2(p2) {}
+    int eval(const Position& pos, DT::EvalContext& ctx) const override {
+        int sq1 = ctx.getPieceSquare(p1, pos);
+        int sq2 = ctx.getPieceSquare(p2, pos);
+        int d = file ? Square::getX(sq2) - Square::getX(sq1)
+                     : Square::getY(sq2) - Square::getY(sq1);
+        if (absVal)
+            d = std::abs(d);
+        return d;
+    }
+    std::string name() const override {
+        return std::string(file ? "file" : "rank") + (absVal ? "Dist" : "Delta") +
+               num2Str(p1) + num2Str(p2);
+    }
+private:
+    int p1;
+    int p2;
 };
 
 // ----------------------------------------------------------------------------

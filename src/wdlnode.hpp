@@ -127,6 +127,10 @@ public:
     std::vector<StatsCollector<DarkSquarePredicate, WDLStats>> darkSquare;
     std::vector<MultiPredStatsCollector<FileRankPredicate<true>, WDLStats>> fileRankW;
     std::vector<MultiPredStatsCollector<FileRankPredicate<false>, WDLStats>> fileRankB;
+    std::vector<MultiPredStatsCollector<FileRankDeltaPredicate<true,false>, WDLStats>> fileDelta;
+    std::vector<MultiPredStatsCollector<FileRankDeltaPredicate<false,false>, WDLStats>> rankDelta;
+    std::vector<MultiPredStatsCollector<FileRankDeltaPredicate<true,true>, WDLStats>> fileDist;
+    std::vector<MultiPredStatsCollector<FileRankDeltaPredicate<false,true>, WDLStats>> rankDist;
 };
 
 class WDLEncoderNode : public DT::EncoderNode {

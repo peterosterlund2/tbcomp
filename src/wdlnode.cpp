@@ -155,6 +155,14 @@ WDLStatsCollectorNode::WDLStatsCollectorNode(DT::EvalContext& ctx) {
         fileRankW.emplace_back(i);
     for (int i = 0; i < nPieces; i++)
         fileRankB.emplace_back(i);
+    for (int p1 = 0; p1 < nPieces; p1++) {
+        for (int p2 = p1+1; p2 < nPieces; p2++) {
+            fileDelta.emplace_back(p1,p2);
+            rankDelta.emplace_back(p1,p2);
+            fileDist.emplace_back(p1,p2);
+            rankDist.emplace_back(p1,p2);
+        }
+    }
 }
 
 bool
@@ -174,6 +182,14 @@ WDLStatsCollectorNode::applyData(const Position& pos, int value, DT::EvalContext
     for (auto& p : fileRankW)
         p.applyData(pos, ctx, value);
     for (auto& p : fileRankB)
+        p.applyData(pos, ctx, value);
+    for (auto& p : fileDelta)
+        p.applyData(pos, ctx, value);
+    for (auto& p : rankDelta)
+        p.applyData(pos, ctx, value);
+    for (auto& p : fileDist)
+        p.applyData(pos, ctx, value);
+    for (auto& p : rankDist)
         p.applyData(pos, ctx, value);
     return true;
 }
@@ -196,6 +212,14 @@ WDLStatsCollectorNode::getBest() const {
     for (auto& p : fileRankW)
         p.updateBest(best);
     for (auto& p : fileRankB)
+        p.updateBest(best);
+    for (auto& p : fileDelta)
+        p.updateBest(best);
+    for (auto& p : rankDelta)
+        p.updateBest(best);
+    for (auto& p : fileDist)
+        p.updateBest(best);
+    for (auto& p : rankDist)
         p.updateBest(best);
     return best;
 }
