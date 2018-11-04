@@ -133,7 +133,8 @@ DecisionTree::getNumLeafNodes() {
             nLeafs++;
         }
         void visit(DT::StatsCollectorNode& node, std::unique_ptr<DT::Node>& owner) override {
-            nLeafs++;
+            std::unique_ptr<DT::Node> best = node.getBest();
+            best->accept(*this, best);
         }
         void visit(DT::EncoderNode& node, std::unique_ptr<DT::Node>& owner) override {
             nLeafs++;
