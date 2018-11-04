@@ -150,12 +150,13 @@ void
 DecisionTree::encodeValues(int nThreads) {
     const U64 size = posIdx.tbSize();
     const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
-    ThreadPool<int> pool(nThreads);
+    ThreadPool<std::vector<int>> pool(nThreads);
     for (U64 b = 0; b < size; b += batchSize) {
         auto task = [this,size,batchSize,b](int workerNo) {
             Position pos;
             std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
             U64 end = std::min(b + batchSize, size);
+            std::vector<int> hist;
             for (U64 idx = b; idx < end; idx++) {
                 if (!active.get(idx))
                     continue;
@@ -168,15 +169,27 @@ DecisionTree::encodeValues(int nThreads) {
 
                 int value = data.getValue(idx);
                 int encVal = root->encodeValue(pos, value, *ctx);
+                if (encVal >= 0) {
+                    if ((int)hist.size() < encVal + 1)
+                        hist.resize(encVal + 1);
+                    hist[encVal]++;
+                }
                 data.setEncoded(idx, encVal);
             }
-            return 0;
+            return hist;
         };
         pool.addTask(task);
     }
-    int dummy;
-    while (pool.getResult(dummy))
-        ;
+    std::vector<int> hist, tmp;
+    while (pool.getResult(tmp)) {
+        if (tmp.size() > hist.size())
+            hist.resize(tmp.size());
+        for (int i = 0; i < (int)tmp.size(); i++)
+            hist[i] += tmp[i];
+    }
+    std::cout << "Encoder histogram:" << std::endl;
+    for (int i = 0; i < (int)hist.size(); i++)
+        std::cout << i << " " << hist[i] << std::endl;
 }
 
 void
