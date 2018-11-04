@@ -164,6 +164,7 @@ WDLStatsCollectorNode::applyData(const Position& pos, int value, DT::EvalContext
     sameB.applyData(pos, ctx, value);
     oppoB.applyData(pos, ctx, value);
     pRace.applyData(pos, ctx, value);
+    captWdl.applyData(pos, ctx, value);
     for (auto& p : darkSquare)
         p.applyData(pos, ctx, value);
     for (auto& p : fileRankW)
@@ -183,6 +184,7 @@ WDLStatsCollectorNode::getBest() const {
     sameB.updateBest(best);
     oppoB.updateBest(best);
     pRace.updateBest(best);
+    captWdl.updateBest(best);
     for (auto& p : darkSquare)
         p.updateBest(best);
     for (auto& p : fileRankW)

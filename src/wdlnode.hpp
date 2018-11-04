@@ -5,6 +5,7 @@
 #include "predicates.hpp"
 
 class WDLStatsNode;
+class WDLEvalContext;
 
 
 struct WDLStats {
@@ -92,6 +93,20 @@ public:
     WDLStats stats;
 };
 
+// ------------------------------------------------------------
+
+class CapturePredicate : public MultiPredicate {
+public:
+    constexpr static int minVal = -2;
+    constexpr static int maxVal = 2;
+    int eval(const Position& pos, DT::EvalContext& ctx) const override;
+    std::string name() const override {
+        return "captWdl";
+    }
+};
+
+// ------------------------------------------------------------
+
 class WDLStatsCollectorNode : public DT::StatsCollectorNode {
 public:
     explicit WDLStatsCollectorNode(DT::EvalContext& ctx);
@@ -107,6 +122,7 @@ public:
     StatsCollector<BishopColorPredicate<true>, WDLStats> sameB;
     StatsCollector<BishopColorPredicate<false>, WDLStats> oppoB;
     MultiPredStatsCollector<PawnRacePredicate, WDLStats> pRace;
+    MultiPredStatsCollector<CapturePredicate, WDLStats> captWdl;
     std::vector<StatsCollector<DarkSquarePredicate, WDLStats>> darkSquare;
     std::vector<MultiPredStatsCollector<FileRankPredicate<true>, WDLStats>> fileRankW;
     std::vector<MultiPredStatsCollector<FileRankPredicate<false>, WDLStats>> fileRankB;
@@ -200,5 +216,11 @@ private:
     int captWdl = 0;
 };
 
+
+inline int
+CapturePredicate::eval(const Position& pos, DT::EvalContext& ctx) const {
+    const WDLEvalContext& wdlCtx = static_cast<const WDLEvalContext&>(ctx);
+    return wdlCtx.getCaptureWdl();
+}
 
 #endif /* WDLNODE_HPP_ */
