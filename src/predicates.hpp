@@ -79,6 +79,42 @@ private:
     int pieceNo;
 };
 
+/** Predicate is true if opponent king is within "the square" of a pawn. */
+class KingPawnSquarePredicate : public Predicate {
+public:
+    explicit KingPawnSquarePredicate(int pieceNo) : pieceNo(pieceNo) {}
+    bool eval(const Position& pos, DT::EvalContext& ctx) const override {
+        int pSq = ctx.getPieceSquare(pieceNo, pos);
+        int x = Square::getX(pSq);
+        int y = Square::getY(pSq);
+        switch (ctx.getPieceType(pieceNo)) {
+        case Piece::WPAWN: {
+            int kSq = pos.getKingSq(false);
+            int pawnDist = std::min(5, 7 - y);
+            int kingDist = BitBoard::getKingDistance(kSq, Square::getSquare(x, 7));
+            if (!pos.isWhiteMove())
+                kingDist--;
+            return kingDist <= pawnDist;
+        }
+        case Piece::BPAWN: {
+            int kSq = pos.getKingSq(true);
+            int pawnDist = std::min(5, y);
+            int kingDist = BitBoard::getKingDistance(kSq, Square::getSquare(x, 0));
+            if (pos.isWhiteMove())
+                kingDist--;
+            return kingDist <= pawnDist;
+        }
+        default:
+            return false;
+        }
+    }
+    std::string name() const override {
+        return "kPawnSq" + num2Str(pieceNo);
+    }
+private:
+    int pieceNo;
+};
+
 // ----------------------------------------------------------------------------
 
 template <typename Pred, typename Stats>

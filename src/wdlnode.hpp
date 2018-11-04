@@ -121,6 +121,7 @@ public:
     StatsCollector<BishopPairPredicate<false>, WDLStats> bPairB;
     StatsCollector<BishopColorPredicate<true>, WDLStats> sameB;
     StatsCollector<BishopColorPredicate<false>, WDLStats> oppoB;
+    std::vector<StatsCollector<KingPawnSquarePredicate, WDLStats>> kPawnSq;
     MultiPredStatsCollector<PawnRacePredicate, WDLStats> pRace;
     MultiPredStatsCollector<CapturePredicate, WDLStats> captWdl;
     std::vector<StatsCollector<DarkSquarePredicate, WDLStats>> darkSquare;

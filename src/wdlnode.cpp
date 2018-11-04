@@ -146,7 +146,9 @@ WDLStatsNode::getEncoder() const {
 
 WDLStatsCollectorNode::WDLStatsCollectorNode(DT::EvalContext& ctx) {
     int nPieces = ctx.numPieces();
-    darkSquare.reserve(nPieces);
+    for (int i = 0; i < nPieces; i++)
+        if (Piece::makeWhite(ctx.getPieceType(i)) == Piece::WPAWN)
+            kPawnSq.emplace_back(i);
     for (int i = 0; i < nPieces; i++)
         darkSquare.emplace_back(i);
     for (int i = 0; i < nPieces; i++)
@@ -163,6 +165,8 @@ WDLStatsCollectorNode::applyData(const Position& pos, int value, DT::EvalContext
     bPairB.applyData(pos, ctx, value);
     sameB.applyData(pos, ctx, value);
     oppoB.applyData(pos, ctx, value);
+    for (auto& p : kPawnSq)
+        p.applyData(pos, ctx, value);
     pRace.applyData(pos, ctx, value);
     captWdl.applyData(pos, ctx, value);
     for (auto& p : darkSquare)
@@ -183,6 +187,8 @@ WDLStatsCollectorNode::getBest() const {
     bPairB.updateBest(best);
     sameB.updateBest(best);
     oppoB.updateBest(best);
+    for (auto& p : kPawnSq)
+        p.updateBest(best);
     pRace.updateBest(best);
     captWdl.updateBest(best);
     for (auto& p : darkSquare)
