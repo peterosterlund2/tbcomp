@@ -133,6 +133,7 @@ public:
     std::vector<MultiPredStatsCollector<FileRankDeltaPredicate<false,true>, WDLStats>> rankDist;
     std::vector<MultiPredStatsCollector<DistancePredicate<false>, WDLStats>> kingDist;
     std::vector<MultiPredStatsCollector<DistancePredicate<true>, WDLStats>> taxiDist;
+    std::vector<StatsCollector<AttackPredicate, WDLStats>> attacks;
 };
 
 class WDLEncoderNode : public DT::EncoderNode {

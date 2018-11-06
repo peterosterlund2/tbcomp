@@ -113,6 +113,43 @@ private:
     int pieceNo;
 };
 
+/** Predicate true if piece p1 attacks piece p2. */
+class AttackPredicate : public Predicate {
+public:
+    AttackPredicate(int p1, int p2) : p1(p1), p2(p2) {}
+    bool eval(const Position& pos, DT::EvalContext& ctx) const override {
+        int sq1 = ctx.getPieceSquare(p1, pos);
+        U64 sq2Mask = 1ULL << ctx.getPieceSquare(p2, pos);
+        switch (ctx.getPieceType(p1)) {
+        case Piece::WKING: case Piece::BKING:
+            return BitBoard::kingAttacks(sq1) & sq2Mask;
+        case Piece::WQUEEN: case Piece::BQUEEN:
+            if (BitBoard::bishopAttacks(sq1, pos.occupiedBB()) & sq2Mask)
+                return true;
+            // Fall through
+        case Piece::WROOK: case Piece::BROOK:
+            return BitBoard::rookAttacks(sq1, pos.occupiedBB()) & sq2Mask;
+        case Piece::WBISHOP: case Piece::BBISHOP:
+            return BitBoard::bishopAttacks(sq1, pos.occupiedBB()) & sq2Mask;
+        case Piece::WKNIGHT: case Piece::BKNIGHT:
+            return BitBoard::knightAttacks(sq1) & sq2Mask;
+        case Piece::WPAWN:
+            return BitBoard::wPawnAttacks(sq1) & sq2Mask;
+        case Piece::BPAWN:
+            return BitBoard::bPawnAttacks(sq1) & sq2Mask;
+        default:
+            return false;
+        }
+    }
+    std::string name() const override {
+        return "attack" + num2Str(p1) + num2Str(p2);
+    }
+
+private:
+    int p1;
+    int p2;
+};
+
 // ----------------------------------------------------------------------------
 
 template <typename Pred, typename Stats>
