@@ -210,6 +210,26 @@ private:
     int p2;
 };
 
+template <bool taxi>
+class DistancePredicate : public MultiPredicate {
+public:
+    constexpr static int minVal = 1;
+    constexpr static int maxVal = taxi ? 14 : 7;
+    DistancePredicate(int p1, int p2) : p1(p1), p2(p2) {}
+    int eval(const Position& pos, DT::EvalContext& ctx) const override {
+        int sq1 = ctx.getPieceSquare(p1, pos);
+        int sq2 = ctx.getPieceSquare(p2, pos);
+        return taxi ? BitBoard::getTaxiDistance(sq1, sq2)
+                    : BitBoard::getKingDistance(sq1, sq2);
+    }
+    std::string name() const override {
+        return std::string(taxi ? "taxi" : "dist") + num2Str(p1) + num2Str(p2);
+    }
+private:
+    int p1;
+    int p2;
+};
+
 // ----------------------------------------------------------------------------
 
 template <typename MultiPred>
