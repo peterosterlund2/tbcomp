@@ -163,6 +163,7 @@ WDLStatsCollectorNode::WDLStatsCollectorNode(DT::EvalContext& ctx) {
             rankDist.emplace_back(p1, p2);
             kingDist.emplace_back(p1, p2);
             taxiDist.emplace_back(p1, p2);
+            diag.emplace_back(p1, p2);
         }
     }
     for (int p1 = 0; p1 < nPieces; p1++)
@@ -201,6 +202,8 @@ WDLStatsCollectorNode::applyData(const Position& pos, int value, DT::EvalContext
         p.applyData(pos, ctx, value);
     for (auto& p : taxiDist)
         p.applyData(pos, ctx, value);
+    for (auto& p : diag)
+        p.applyData(pos, ctx, value);
     for (auto& p : attacks)
         p.applyData(pos, ctx, value);
     return true;
@@ -236,6 +239,8 @@ WDLStatsCollectorNode::getBest() const {
     for (auto& p : kingDist)
         p.updateBest(best);
     for (auto& p : taxiDist)
+        p.updateBest(best);
+    for (auto& p : diag)
         p.updateBest(best);
     for (auto& p : attacks)
         p.updateBest(best);

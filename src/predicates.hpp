@@ -144,7 +144,23 @@ public:
     std::string name() const override {
         return "attack" + num2Str(p1) + num2Str(p2);
     }
+private:
+    int p1;
+    int p2;
+};
 
+/** Predicate true if piece p1 and piece p2 on the same diagonal. */
+class DiagonalPredicate : public Predicate {
+public:
+    DiagonalPredicate(int p1, int p2) : p1(p1), p2(p2) {}
+    bool eval(const Position& pos, DT::EvalContext& ctx) const override {
+        int sq1 = ctx.getPieceSquare(p1, pos);
+        int sq2 = ctx.getPieceSquare(p2, pos);
+        return BitBoard::bishopAttacks(sq1, 0) & (1ULL << sq2);
+    }
+    std::string name() const override {
+        return "diag" + num2Str(p1) + num2Str(p2);
+    }
 private:
     int p1;
     int p2;
