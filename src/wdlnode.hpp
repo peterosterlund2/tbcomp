@@ -38,8 +38,6 @@ struct WDLStats {
 
     /** Increment counter corresponding to wdlScore. */
     void incCount(int wdlScore) {
-        assert(wdlScore+2 >= 0);                // FIXME!! Remove
-        assert(wdlScore+2 < nWdlVals);
         count[wdlScore+2]++;
     }
 
