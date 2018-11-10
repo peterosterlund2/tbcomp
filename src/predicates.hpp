@@ -166,6 +166,34 @@ private:
     int p2;
 };
 
+/** Predicate true if pieces p1 and p2 can be knight forked by the opponent. */
+class ForkPredicate : public Predicate {
+public:
+    ForkPredicate(int p1, int p2, const DT::EvalContext& ctx) : p1(p1), p2(p2) {
+        forker = Piece::isWhite(ctx.getPieceType(p1)) ? Piece::BKNIGHT : Piece::WKNIGHT;
+    }
+    bool eval(const Position& pos, DT::EvalContext& ctx) const override {
+        int sq1 = ctx.getPieceSquare(p1, pos);
+        int sq2 = ctx.getPieceSquare(p2, pos);
+        U64 atk = 0;
+        U64 m = pos.pieceTypeBB(forker);
+        while (m) {
+            int sq = BitBoard::extractSquare(m);
+            atk |= BitBoard::knightAttacks(sq);
+        }
+        atk &= BitBoard::knightAttacks(sq1);
+        atk &= BitBoard::knightAttacks(sq2);
+        return atk != 0;
+    }
+    std::string name() const override {
+        return "fork" + num2Str(p1) + num2Str(p2);
+    }
+private:
+    int p1;
+    int p2;
+    Piece::Type forker;
+};
+
 // ----------------------------------------------------------------------------
 
 template <typename Pred, typename Stats>

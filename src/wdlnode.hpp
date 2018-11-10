@@ -133,6 +133,7 @@ public:
     std::vector<MultiPredStatsCollector<DistancePredicate<true>, WDLStats>> taxiDist;
     std::vector<StatsCollector<DiagonalPredicate, WDLStats>> diag;
     std::vector<StatsCollector<AttackPredicate, WDLStats>> attacks;
+    std::vector<StatsCollector<ForkPredicate, WDLStats>> forks;
 };
 
 class WDLEncoderNode : public DT::EncoderNode {

@@ -164,6 +164,19 @@ WDLStatsCollectorNode::WDLStatsCollectorNode(DT::EvalContext& ctx) {
             kingDist.emplace_back(p1, p2);
             taxiDist.emplace_back(p1, p2);
             diag.emplace_back(p1, p2);
+
+            bool white1 = Piece::isWhite(ctx.getPieceType(p1));
+            bool white2 = Piece::isWhite(ctx.getPieceType(p2));
+            if (white1 == white2) {
+                for (int p3 = 0; p3 < nPieces; p3++) {
+                    Piece::Type pt = ctx.getPieceType(p3);
+                    if ((Piece::isWhite(pt) != white1) &&
+                        (Piece::makeWhite(pt) == Piece::WKNIGHT)) {
+                        forks.emplace_back(p1, p2, ctx);
+                        break;
+                    }
+                }
+            }
         }
     }
     for (int p1 = 0; p1 < nPieces; p1++)
@@ -204,6 +217,8 @@ WDLStatsCollectorNode::applyData(const Position& pos, int value, DT::EvalContext
         p.applyData(pos, ctx, value);
     for (auto& p : diag)
         p.applyData(pos, ctx, value);
+    for (auto& p : forks)
+        p.applyData(pos, ctx, value);
     for (auto& p : attacks)
         p.applyData(pos, ctx, value);
     return true;
@@ -241,6 +256,8 @@ WDLStatsCollectorNode::getBest() const {
     for (auto& p : taxiDist)
         p.updateBest(best);
     for (auto& p : diag)
+        p.updateBest(best);
+    for (auto& p : forks)
         p.updateBest(best);
     for (auto& p : attacks)
         p.updateBest(best);
