@@ -125,8 +125,7 @@ WDLStatsNode::mergeWithNode(const DT::StatsNode& other) const {
         const WDLEncoderNode& wdlEnc2 = static_cast<const WDLEncoderNode&>(*enc2.get());
         if (wdlEnc1 == wdlEnc2) {
             merge = true;
-        } else if ((wdlEnc1.subSetOf(wdlEnc2) && wdlEnc1.hasEntropy()) ||
-                   (wdlEnc2.subSetOf(wdlEnc1) && wdlEnc2.hasEntropy())) {
+        } else if (wdlEnc1.subSetOf(wdlEnc2) || wdlEnc2.subSetOf(wdlEnc1)) {
             merge = true;
         }
     }
