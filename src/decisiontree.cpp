@@ -150,13 +150,13 @@ void
 DecisionTree::encodeValues(int nThreads) {
     const U64 size = posIdx.tbSize();
     const U64 batchSize = std::max((U64)128*1024, (size + 1023) / 1024);
-    ThreadPool<std::vector<int>> pool(nThreads);
+    ThreadPool<std::vector<U64>> pool(nThreads);
     for (U64 b = 0; b < size; b += batchSize) {
         auto task = [this,size,batchSize,b](int workerNo) {
             Position pos;
             std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
             U64 end = std::min(b + batchSize, size);
-            std::vector<int> hist;
+            std::vector<U64> hist;
             for (U64 idx = b; idx < end; idx++) {
                 if (!active.get(idx))
                     continue;
@@ -180,7 +180,7 @@ DecisionTree::encodeValues(int nThreads) {
         };
         pool.addTask(task);
     }
-    std::vector<int> hist, tmp;
+    std::vector<U64> hist, tmp;
     while (pool.getResult(tmp)) {
         if (tmp.size() > hist.size())
             hist.resize(tmp.size());
