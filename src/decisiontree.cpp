@@ -1,8 +1,13 @@
 #include "decisiontree.hpp"
+#include "predicate.hpp"
 #include "bitarray.hpp"
 #include "posindex.hpp"
 #include "position.hpp"
+#include "textio.hpp"
+#include "util/random.hpp"
+#include "util/timeUtil.hpp"
 #include "threadpool.hpp"
+#include <fstream>
 #include <cassert>
 
 
@@ -188,8 +193,47 @@ DecisionTree::encodeValues(int nThreads) {
             hist[i] += tmp[i];
     }
     std::cout << "Encoder histogram:" << std::endl;
-    for (int i = 0; i < (int)hist.size(); i++)
+    U64 nMisPredicted = 0;
+    for (int i = 0; i < (int)hist.size(); i++) {
+        if (i > 0)
+            nMisPredicted += hist[i];
         std::cout << i << " " << hist[i] << std::endl;
+    }
+
+    logMisPredicted(nMisPredicted);
+}
+
+void
+DecisionTree::logMisPredicted(U64 remaining) {
+    Random rndGen(currentTimeMillis());
+    U64 nToLog = 1000;
+    std::vector<U64> toLog;
+    for (U64 idx = 0, size = posIdx.tbSize(); idx < size; idx++) {
+        if (data.getEncoded(idx) != 0) {
+            if (nToLog >= remaining || rndGen.nextU64() <= (~0ULL) / remaining * nToLog) {
+                toLog.push_back(idx);
+                nToLog--;
+            }
+            remaining--;
+        }
+    }
+
+    int N = toLog.size();
+    for (int i = 0; i < N; i++) {
+        int idx = i + rndGen.nextInt(N - i);
+        std::swap(toLog[i], toLog[idx]);
+    }
+
+    std::ofstream of("mispredict.txt");
+    Position pos;
+    for (U64 idx : toLog) {
+        for (U64 m = pos.occupiedBB(); m; ) // Clear position
+            pos.clearPiece(BitBoard::extractSquare(m));
+        bool valid = posIdx.index2Pos(idx, pos);
+        assert(valid);
+        of << "idx:" << idx << " val:" << data.getEncoded(idx)
+           << " fen:" << TextIO::toFEN(pos) << '\n' << TextIO::asciiBoard(pos) << std::flush;
+    }
 }
 
 void

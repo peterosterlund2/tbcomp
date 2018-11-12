@@ -48,6 +48,9 @@ private:
     /** Apply decision tree encoding for all applicable values in data. */
     void encodeValues(int nThreads);
 
+    /** Log a random sample of mispredicted positions to a file. */
+    void logMisPredicted(U64 remaining);
+
     DT::NodeFactory& nodeFactory;
     const PosIndex& posIdx;
     DT::UncompressedData& data;

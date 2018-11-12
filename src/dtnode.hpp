@@ -59,6 +59,7 @@ public:
 
     virtual int getValue(U64 idx) const = 0;
     virtual void setEncoded(U64 idx, int value) = 0;
+    virtual int getEncoded(U64 idx) const = 0;
 
     virtual bool isHandled(U64 idx) const = 0;
     virtual void setHandled(U64 idx, bool active) = 0;

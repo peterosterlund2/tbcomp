@@ -194,6 +194,7 @@ public:
 
     int getValue(U64 idx) const override { return data[idx].getWdl(); }
     void setEncoded(U64 idx, int value) override { data[idx].setData(value); }
+    int getEncoded(U64 idx) const override { return data[idx].getData(); }
 
     bool isHandled(U64 idx) const override { return data[idx].getHandled(); }
     void setHandled(U64 idx, bool handled) override { data[idx].setHandled(handled); }
