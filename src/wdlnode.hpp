@@ -8,7 +8,8 @@ class WDLStatsNode;
 class WDLEvalContext;
 
 
-struct WDLStats {
+class WDLStats {
+public:
     constexpr static int nWdlVals = 5;
 
     WDLStats() : count{} {}
@@ -113,6 +114,7 @@ public:
 
     std::unique_ptr<DT::Node> getBest() const override;
 
+private:
     StatsCollector<WTMPredicate, WDLStats> wtm;
     StatsCollector<InCheckPredicate, WDLStats> inCheck;
     StatsCollector<BishopPairPredicate<true>, WDLStats> bPairW;
@@ -155,6 +157,7 @@ public:
         return encTable == other.encTable;
     }
 
+private:
     std::array<int, WDLStats::nWdlVals> encTable;
 };
 
