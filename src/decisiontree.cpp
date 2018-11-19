@@ -48,6 +48,29 @@ DecisionTree::updateStats() {
     U64 nPos = posIdx.tbSize();
     Position pos;
     std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
+
+    class Visitor {
+    public:
+        Visitor(const Position& pos, DT::EvalContext& ctx) : pos(pos), ctx(ctx) {}
+        void visit(DT::PredicateNode& node) {
+            return (node.pred->eval(pos, ctx) ? node.right : node.left)->accept(*this);
+        }
+        void visit(DT::StatsNode& node) {
+            result = false;
+        }
+        void visit(DT::StatsCollectorNode& node) {
+            result = node.applyData(pos, value, ctx);
+        }
+        void visit(DT::EncoderNode& node) {
+            assert(false);
+        }
+        const Position& pos;
+        DT::EvalContext& ctx;
+        int value = 0;
+        bool result = false;
+    };
+    Visitor visitor(pos, *ctx);
+
     for (U64 idx = 0; idx < nPos; idx++) {
         if (!active.get(idx) || data.isHandled(idx))
             continue;
@@ -58,8 +81,9 @@ DecisionTree::updateStats() {
         assert(valid);
         ctx->init(pos, data, idx);
 
-        int value = data.getValue(idx);
-        if (!root->applyData(pos, value, *ctx))
+        visitor.value = data.getValue(idx);
+        root->accept(visitor);
+        if (!visitor.result)
             data.setHandled(idx, true);
     }
 }

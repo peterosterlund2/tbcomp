@@ -27,10 +27,6 @@ public:
     explicit Node(NodeType type) : nodeType(type) {}
     virtual ~Node() = default;
 
-    /** Apply position value to tree, possibly by delegating to a child node.
-     *  @return True if application was successful, false otherwise. */
-    virtual bool applyData(const Position& pos, int value, EvalContext& ctx) = 0;
-
     /** Encode a value based on decision tree prediction. Most likely value
      *  encoded as 0, second most likely as 1, etc. */
     virtual int encodeValue(const Position& pos, int value, EvalContext& ctx) const = 0;
@@ -91,7 +87,6 @@ protected:
 class PredicateNode : public Node {
 public:
     PredicateNode();
-    bool applyData(const Position& pos, int value, EvalContext& ctx) override;
     int encodeValue(const Position& pos, int value, EvalContext& ctx) const override;
     double entropy() const override;
     std::unique_ptr<StatsNode> getStats() const override;
@@ -105,7 +100,6 @@ public:
 class StatsNode : public Node {
 public:
     StatsNode() : Node(NodeType::STATS) {}
-    bool applyData(const Position& pos, int value, EvalContext& ctx) override;
     int encodeValue(const Position& pos, int value, EvalContext& ctx) const override;
 
     /** Add statistics from "other" to this node. */
@@ -127,6 +121,11 @@ public:
 class StatsCollectorNode : public Node {
 public:
     StatsCollectorNode() : Node(NodeType::STATSCOLLECTOR) {}
+
+    /** Apply position value to tree, possibly by delegating to a child node.
+     *  @return True if application was successful, false otherwise. */
+    virtual bool applyData(const Position& pos, int value, EvalContext& ctx) = 0;
+
     int encodeValue(const Position& pos, int value, EvalContext& ctx) const override;
     double entropy() const override;
     std::unique_ptr<StatsNode> getStats() const override;
@@ -140,7 +139,6 @@ class EncoderNode : public Node {
 public:
     EncoderNode() : Node(NodeType::ENCODER) {}
     double entropy() const override;
-    bool applyData(const Position& pos, int value, EvalContext& ctx) override;
 };
 
 class NodeFactory {

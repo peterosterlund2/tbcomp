@@ -12,11 +12,6 @@ PredicateNode::PredicateNode()
   : Node(NodeType::PREDICATE) {
 }
 
-bool
-PredicateNode::applyData(const Position& pos, int value, EvalContext& ctx) {
-    return (pred->eval(pos, ctx) ? right : left)->applyData(pos, value, ctx);
-}
-
 int
 PredicateNode::encodeValue(const Position& pos, int value, EvalContext& ctx) const {
     return (pred->eval(pos, ctx) ? right : left)->encodeValue(pos, value, ctx);
@@ -63,11 +58,6 @@ PredicateNode::describe(int indentLevel) const {
 
 // ------------------------------------------------------------
 
-bool
-StatsNode::applyData(const Position& pos, int value, EvalContext& ctx) {
-    return false;
-}
-
 int
 StatsNode::encodeValue(const Position& pos, int value, EvalContext& ctx) const {
     assert(false);
@@ -103,12 +93,6 @@ double
 EncoderNode::entropy() const {
     assert(false);
     return 0.0;
-}
-
-bool
-EncoderNode::applyData(const Position& pos, int value, EvalContext& ctx) {
-    assert(false);
-    return false;
 }
 
 }
