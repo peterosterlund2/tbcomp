@@ -71,7 +71,12 @@ DecisionTree::selectBestPreds(bool createNewStatsCollector) {
         Visitor(bool createNewStatsCollector, DT::NodeFactory& nodeFactory,
                 DT::EvalContext& ctx) :
             createNewStatsCollector(createNewStatsCollector), nodeFactory(nodeFactory), ctx(ctx) {}
-        void visit(DT::StatsCollectorNode& node, std::unique_ptr<DT::Node>& owner) override {
+        using DT::Visitor::visit;
+        void visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner) {
+            node.left->accept(*this, node.left);
+            node.right->accept(*this, node.right);
+        }
+        void visit(DT::StatsCollectorNode& node, std::unique_ptr<DT::Node>& owner) {
             owner = node.getBest();
             if (createNewStatsCollector) {
                 DT::PredicateNode* predNode = dynamic_cast<DT::PredicateNode*>(owner.get());
@@ -101,7 +106,9 @@ DecisionTree::selectBestPreds(bool createNewStatsCollector) {
 void
 DecisionTree::simplifyTree() {
     class Visitor : public DT::Visitor {
-        void visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner) override {
+    public:
+        using DT::Visitor::visit;
+        void visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner) {
             node.left->accept(*this, node.left);
             node.right->accept(*this, node.right);
 
@@ -122,7 +129,12 @@ void
 DecisionTree::makeEncoderTree() {
     class Visitor : public DT::Visitor {
     public:
-        void visit(DT::StatsNode& node, std::unique_ptr<DT::Node>& owner) override {
+        using DT::Visitor::visit;
+        void visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner) {
+            node.left->accept(*this, node.left);
+            node.right->accept(*this, node.right);
+        }
+        void visit(DT::StatsNode& node, std::unique_ptr<DT::Node>& owner) {
             owner = node.getEncoder();
         }
     };
@@ -132,22 +144,26 @@ DecisionTree::makeEncoderTree() {
 
 int
 DecisionTree::getNumLeafNodes() {
-    class Visitor : public DT::Visitor {
+    class Visitor {
     public:
-        void visit(DT::StatsNode& node, std::unique_ptr<DT::Node>& owner) override {
+        void visit(DT::PredicateNode& node) {
+            node.left->accept(*this);
+            node.right->accept(*this);
+        }
+        void visit(DT::StatsNode& node) {
             nLeafs++;
         }
-        void visit(DT::StatsCollectorNode& node, std::unique_ptr<DT::Node>& owner) override {
+        void visit(DT::StatsCollectorNode& node) {
             std::unique_ptr<DT::Node> best = node.getBest();
-            best->accept(*this, best);
+            best->accept(*this);
         }
-        void visit(DT::EncoderNode& node, std::unique_ptr<DT::Node>& owner) override {
+        void visit(DT::EncoderNode& node) {
             nLeafs++;
         }
         int nLeafs = 0;
     };
     Visitor visitor;
-    root->accept(visitor, root);
+    root->accept(visitor);
     return visitor.nLeafs;
 }
 

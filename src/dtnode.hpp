@@ -12,12 +12,19 @@ class PredicateNode;
 class StatsNode;
 class StatsCollectorNode;
 class EncoderNode;
-class Visitor;
 class EvalContext;
 
 
 class Node {
+protected:
+    enum class NodeType : int {
+        PREDICATE,
+        STATSCOLLECTOR,
+        STATS,
+        ENCODER
+    };
 public:
+    explicit Node(NodeType type) : nodeType(type) {}
     virtual ~Node() = default;
 
     /** Apply position value to tree, possibly by delegating to a child node.
@@ -34,22 +41,23 @@ public:
     /** Get statistics for this node. */
     virtual std::unique_ptr<StatsNode> getStats() const = 0;
 
-    /** Visitor pattern. */
-    virtual void accept(Visitor& visitor, std::unique_ptr<Node>& owner) = 0;
+    /** Template based visitor pattern. */
+    template <typename Visitor, typename... Args>
+    void accept(Visitor& visitor, Args&&... args);
 
     /** Text description of tree rooted at this node. For debugging. */
     virtual std::string describe(int indentLevel) const = 0;
+
+private:
+    const NodeType nodeType;
 };
 
-/** The visitor is allowed to modify the tree by overwriting "owner", but
- *  this invalidates the "node" reference, so special care is needed. */
 class Visitor {
 public:
-    /** Default implementation visits left and right child nodes. */
-    virtual void visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner);
-    virtual void visit(DT::StatsNode& node, std::unique_ptr<DT::Node>& owner) {}
-    virtual void visit(DT::StatsCollectorNode& node, std::unique_ptr<DT::Node>& owner) {}
-    virtual void visit(DT::EncoderNode& node, std::unique_ptr<DT::Node>& owner) {}
+    template <typename... Args> void visit(DT::PredicateNode& node, Args&&... args) {}
+    template <typename... Args> void visit(DT::StatsNode& node, Args&&... args) {}
+    template <typename... Args> void visit(DT::StatsCollectorNode& node, Args&&...) {}
+    template <typename... Args> void visit(DT::EncoderNode& node, Args&&... args) {}
 };
 
 /** Abstract representation of uncompressed data for a tablebase. */
@@ -82,11 +90,11 @@ protected:
 
 class PredicateNode : public Node {
 public:
+    PredicateNode();
     bool applyData(const Position& pos, int value, EvalContext& ctx) override;
     int encodeValue(const Position& pos, int value, EvalContext& ctx) const override;
     double entropy() const override;
     std::unique_ptr<StatsNode> getStats() const override;
-    void accept(Visitor& visitor, std::unique_ptr<Node>& owner) override;
     std::string describe(int indentLevel) const override;
 
     std::unique_ptr<Predicate> pred;
@@ -96,9 +104,9 @@ public:
 
 class StatsNode : public Node {
 public:
+    StatsNode() : Node(NodeType::STATS) {}
     bool applyData(const Position& pos, int value, EvalContext& ctx) override;
     int encodeValue(const Position& pos, int value, EvalContext& ctx) const override;
-    void accept(Visitor& visitor, std::unique_ptr<Node>& owner) override;
 
     /** Add statistics from "other" to this node. */
     virtual void addStats(const StatsNode* other) = 0;
@@ -118,10 +126,10 @@ public:
  *  how successful each predicate is at reducing the entropy of the data. */
 class StatsCollectorNode : public Node {
 public:
+    StatsCollectorNode() : Node(NodeType::STATSCOLLECTOR) {}
     int encodeValue(const Position& pos, int value, EvalContext& ctx) const override;
     double entropy() const override;
     std::unique_ptr<StatsNode> getStats() const override;
-    void accept(Visitor& visitor, std::unique_ptr<Node>& owner) override;
     std::string describe(int indentLevel) const override;
 
     /** Create node that realizes the largest information gain. */
@@ -130,9 +138,9 @@ public:
 
 class EncoderNode : public Node {
 public:
+    EncoderNode() : Node(NodeType::ENCODER) {}
     double entropy() const override;
     bool applyData(const Position& pos, int value, EvalContext& ctx) override;
-    void accept(Visitor& visitor, std::unique_ptr<Node>& owner) override;
 };
 
 class NodeFactory {
@@ -141,6 +149,27 @@ public:
 
     virtual std::unique_ptr<EvalContext> makeEvalContext(const PosIndex& posIdx) = 0;
 };
+
+template <typename Visitor, typename... Args>
+void Node::accept(Visitor& visitor, Args&&... args) {
+    switch (nodeType) {
+    case NodeType::PREDICATE:
+        visitor.visit(static_cast<DT::PredicateNode&>(*this), std::forward<Args>(args)...);
+        break;
+    case NodeType::STATSCOLLECTOR:
+        visitor.visit(static_cast<DT::StatsCollectorNode&>(*this), std::forward<Args>(args)...);
+        break;
+    case NodeType::STATS:
+        visitor.visit(static_cast<DT::StatsNode&>(*this), std::forward<Args>(args)...);
+        break;
+    case NodeType::ENCODER:
+        visitor.visit(static_cast<DT::EncoderNode&>(*this), std::forward<Args>(args)...);
+        break;
+    default:
+        assert(false);
+        break;
+    }
+}
 
 inline int
 EvalContext::numPieces() const {

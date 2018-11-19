@@ -8,13 +8,9 @@
 
 namespace DT {
 
-void
-Visitor::visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner) {
-    node.left->accept(*this, node.left);
-    node.right->accept(*this, node.right);
+PredicateNode::PredicateNode()
+  : Node(NodeType::PREDICATE) {
 }
-
-// ------------------------------------------------------------
 
 bool
 PredicateNode::applyData(const Position& pos, int value, EvalContext& ctx) {
@@ -37,11 +33,6 @@ PredicateNode::getStats() const {
     std::unique_ptr<StatsNode> s2 = right->getStats();
     s1->addStats(s2.get());
     return std::move(s1);
-}
-
-void
-PredicateNode::accept(Visitor& visitor, std::unique_ptr<Node>& owner) {
-    visitor.visit(*this, owner);
 }
 
 std::string
@@ -83,11 +74,6 @@ StatsNode::encodeValue(const Position& pos, int value, EvalContext& ctx) const {
     return 0;
 }
 
-void
-StatsNode::accept(Visitor& visitor, std::unique_ptr<Node>& owner) {
-    visitor.visit(*this, owner);
-}
-
 // ------------------------------------------------------------
 
 int
@@ -104,11 +90,6 @@ StatsCollectorNode::entropy() const {
 std::unique_ptr<StatsNode>
 StatsCollectorNode::getStats() const {
     return getBest()->getStats();
-}
-
-void
-StatsCollectorNode::accept(Visitor& visitor, std::unique_ptr<Node>& owner) {
-    visitor.visit(*this, owner);
 }
 
 std::string
@@ -129,11 +110,5 @@ EncoderNode::applyData(const Position& pos, int value, EvalContext& ctx) {
     assert(false);
     return false;
 }
-
-void
-EncoderNode::accept(Visitor& visitor, std::unique_ptr<Node>& owner) {
-    visitor.visit(*this, owner);
-}
-
 
 }
