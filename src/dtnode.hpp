@@ -3,8 +3,8 @@
 
 #include "util/util.hpp"
 #include "posindex.hpp"
+#include "predicate.hpp"
 
-class Predicate;
 
 namespace DT {
 
@@ -26,10 +26,6 @@ protected:
 public:
     explicit Node(NodeType type) : nodeType(type) {}
     virtual ~Node() = default;
-
-    /** Encode a value based on decision tree prediction. Most likely value
-     *  encoded as 0, second most likely as 1, etc. */
-    virtual int encodeValue(const Position& pos, int value, EvalContext& ctx) const = 0;
 
     /** Sum of entropy for all nodes in the tree. */
     virtual double entropy() const = 0;
@@ -87,7 +83,9 @@ protected:
 class PredicateNode : public Node {
 public:
     PredicateNode();
-    int encodeValue(const Position& pos, int value, EvalContext& ctx) const override;
+
+    /** Get left/right child depending on the predicate. */
+    Node& getChild(const Position& pos, EvalContext& ctx);
     double entropy() const override;
     std::unique_ptr<StatsNode> getStats() const override;
     std::string describe(int indentLevel) const override;
@@ -100,7 +98,6 @@ public:
 class StatsNode : public Node {
 public:
     StatsNode() : Node(NodeType::STATS) {}
-    int encodeValue(const Position& pos, int value, EvalContext& ctx) const override;
 
     /** Add statistics from "other" to this node. */
     virtual void addStats(const StatsNode* other) = 0;
@@ -126,7 +123,6 @@ public:
      *  @return True if application was successful, false otherwise. */
     virtual bool applyData(const Position& pos, int value, EvalContext& ctx) = 0;
 
-    int encodeValue(const Position& pos, int value, EvalContext& ctx) const override;
     double entropy() const override;
     std::unique_ptr<StatsNode> getStats() const override;
     std::string describe(int indentLevel) const override;
@@ -138,6 +134,11 @@ public:
 class EncoderNode : public Node {
 public:
     EncoderNode() : Node(NodeType::ENCODER) {}
+
+    /** Encode a value based on decision tree prediction. Most likely value
+     *  encoded as 0, second most likely as 1, etc. */
+    virtual int encodeValue(const Position& pos, int value, EvalContext& ctx) const = 0;
+
     double entropy() const override;
 };
 
@@ -182,6 +183,11 @@ EvalContext::getPieceType(int pieceNo) const {
 inline int
 EvalContext::getPieceSquare(int pieceNo, const Position& pos) const {
     return posIdx.getPieceSquare(pieceNo, pos);
+}
+
+inline Node&
+PredicateNode::getChild(const Position& pos, EvalContext& ctx) {
+    return *(pred->eval(pos, ctx) ? right : left);
 }
 
 }

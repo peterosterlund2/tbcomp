@@ -49,11 +49,10 @@ DecisionTree::updateStats() {
     Position pos;
     std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
 
-    class Visitor {
-    public:
+    struct Visitor {
         Visitor(const Position& pos, DT::EvalContext& ctx) : pos(pos), ctx(ctx) {}
         void visit(DT::PredicateNode& node) {
-            return (node.pred->eval(pos, ctx) ? node.right : node.left)->accept(*this);
+            return node.getChild(pos, ctx).accept(*this);
         }
         void visit(DT::StatsNode& node) {
             result = false;
@@ -90,8 +89,7 @@ DecisionTree::updateStats() {
 
 bool
 DecisionTree::selectBestPreds(bool createNewStatsCollector) {
-    class Visitor : public DT::Visitor {
-    public:
+    struct Visitor : public DT::Visitor {
         Visitor(bool createNewStatsCollector, DT::NodeFactory& nodeFactory,
                 DT::EvalContext& ctx) :
             createNewStatsCollector(createNewStatsCollector), nodeFactory(nodeFactory), ctx(ctx) {}
@@ -129,8 +127,7 @@ DecisionTree::selectBestPreds(bool createNewStatsCollector) {
 
 void
 DecisionTree::simplifyTree() {
-    class Visitor : public DT::Visitor {
-    public:
+    struct Visitor : public DT::Visitor {
         using DT::Visitor::visit;
         void visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner) {
             node.left->accept(*this, node.left);
@@ -151,8 +148,7 @@ DecisionTree::simplifyTree() {
 
 void
 DecisionTree::makeEncoderTree() {
-    class Visitor : public DT::Visitor {
-    public:
+    struct Visitor : public DT::Visitor {
         using DT::Visitor::visit;
         void visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner) {
             node.left->accept(*this, node.left);
@@ -168,8 +164,7 @@ DecisionTree::makeEncoderTree() {
 
 int
 DecisionTree::getNumLeafNodes() {
-    class Visitor {
-    public:
+    struct Visitor {
         void visit(DT::PredicateNode& node) {
             node.left->accept(*this);
             node.right->accept(*this);
@@ -200,6 +195,27 @@ DecisionTree::encodeValues(int nThreads) {
         auto task = [this,size,batchSize,b](int workerNo) {
             Position pos;
             std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
+            struct Visitor {
+                Visitor(const Position& pos, DT::EvalContext& ctx) : pos(pos), ctx(ctx) {}
+                void visit(DT::PredicateNode& node) {
+                    return node.getChild(pos, ctx).accept(*this);
+                }
+                void visit(DT::StatsNode& node) {
+                    assert(false);
+                }
+                void visit(DT::StatsCollectorNode& node) {
+                    assert(false);
+                }
+                void visit(DT::EncoderNode& node) {
+                    value = node.encodeValue(pos, value, ctx);
+                }
+                const Position& pos;
+                DT::EvalContext& ctx;
+                int value = 0;
+                bool result = false;
+            };
+            Visitor visitor(pos, *ctx);
+
             U64 end = std::min(b + batchSize, size);
             std::vector<U64> hist;
             for (U64 idx = b; idx < end; idx++) {
@@ -212,8 +228,9 @@ DecisionTree::encodeValues(int nThreads) {
                 assert(valid);
                 ctx->init(pos, data, idx);
 
-                int value = data.getValue(idx);
-                int encVal = root->encodeValue(pos, value, *ctx);
+                visitor.value = data.getValue(idx);
+                root->accept(visitor);
+                int encVal = visitor.value;
                 if (encVal >= 0) {
                     if ((int)hist.size() < encVal + 1)
                         hist.resize(encVal + 1);
