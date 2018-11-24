@@ -25,7 +25,7 @@ WDLStats::entropy() const {
 
 double
 WDLStats::adjustedEntropy() const {
-    U64 sum = std::accumulate(count.begin(), count.end(), 0);
+    U64 sum = std::accumulate(count.begin(), count.end(), (U64)0);
     int bits = (sum >= (1ULL<<32)) ? floorLog2((U32)(sum >> 32)) + 32 : floorLog2((U32)sum);
     return entropy() + (64 - bits) * 1e-4;
 }

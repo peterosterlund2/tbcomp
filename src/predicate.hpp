@@ -27,7 +27,7 @@ public:
 /** Compute entropy of a distribution, measured in number of bytes. */
 template <typename Iter>
 double entropy(Iter beg, Iter end) {
-    U64 sum = std::accumulate(beg, end, 0);
+    U64 sum = std::accumulate(beg, end, (U64)0);
     if (sum == 0)
         return 0;
     double entr = 0;
