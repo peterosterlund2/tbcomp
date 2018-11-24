@@ -188,7 +188,19 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
                 }
             }
         }
+
+        size_t maxCands = std::max(128*1024, 8*(maxSyms-(int)symbols.size())); // Heuristic limit
+        int pruneFreq = -1;
+        while (pairCands.size() > maxCands) {
+            auto it2 = --pairCands.get<Freq>().end();
+            cacheSize -= it2->indices.size();
+            pruneFreq = (int)it2->freq;
+            pairCands.get<Freq>().erase(it2);
+        }
+        if (pruneFreq != -1)
+            std::cout << "candidate prune, freq:" << pruneFreq << std::endl;
         pruneCache(cpData, maxCache, comprSize);
+
         for (int i = 0; i < nSym; i++) {
             for (int k = 0; k < 2; k++) {
                 U16 p1 = (k == 0) ? i : Y;
@@ -212,17 +224,6 @@ RePairComp::compress(U64 minFreq, int maxSyms) {
         std::cout << "repl:" << nRepl << " add:" << nAdded << " remove:" << nRemoved
                   << " cand:" << pairCands.size() << " cache:" << cacheSize
                   << " compr:" << comprSize << std::endl;
-
-        size_t maxCands = std::max(128*1024, 8*(maxSyms-(int)symbols.size())); // Heuristic limit
-        int pruneFreq = -1;
-        while (pairCands.size() > maxCands) {
-            auto it2 = --pairCands.get<Freq>().end();
-            cacheSize -= it2->indices.size();
-            pruneFreq = (int)it2->freq;
-            pairCands.get<Freq>().erase(it2);
-        }
-        if (pruneFreq != -1)
-            std::cout << "candidate prune, freq:" << pruneFreq << std::endl;
     }
 }
 
@@ -632,33 +633,38 @@ RePairComp::computeSkipFirst(int X, int Y) {
 U64
 RePairComp::replacePairsIdxCache(const std::vector<U64>& indices, int X, int Y, int Z,
                                  RePairImpl::DeltaFreq& delta) {
-    std::vector<S64>& deltaFreqAZ = delta.deltaFreqAZ;
-    std::vector<S64>& deltaFreqZB = delta.deltaFreqZB;
-    std::vector<S64>& deltaFreqAX = delta.deltaFreqAX;
-    std::vector<S64>& deltaFreqYB = delta.deltaFreqYB;
-    std::vector<std::vector<U64>>& vecAZ = delta.vecAZ;
-    std::vector<std::vector<U64>>& vecZB = delta.vecZB;
+    auto indexedReplace = [this,&indices,X,Y,Z](U64 beg, U64 end, RePairImpl::DeltaFreq& delta) -> U64 {
+        std::vector<S64>& deltaFreqAZ = delta.deltaFreqAZ;
+        std::vector<S64>& deltaFreqZB = delta.deltaFreqZB;
+        std::vector<S64>& deltaFreqAX = delta.deltaFreqAX;
+        std::vector<S64>& deltaFreqYB = delta.deltaFreqYB;
+        std::vector<std::vector<U64>>& vecAZ = delta.vecAZ;
+        std::vector<std::vector<U64>>& vecZB = delta.vecZB;
 
-    U64 nRepl = 0;
-    for (U64 idxX : indices) { // Transform AXYB -> AZB
-        SymbolArray::iterator it = sa.iter(idxX);
-        SymbolArray::iterator itA(it);
-        int x = it.getSymbol(); if (x != X) continue; it.moveToNext();
-        int y = it.getSymbol(); if (y != Y) continue; U64 idxY = it.getIndex(); it.moveToNext();
-        int b = it.getSymbol();
-        int a = itA.moveToPrev() ? itA.getSymbol() : -1;
-        if (a != -1) {
-            deltaFreqAZ[a]++; vecAZ[a].push_back(itA.getIndex());
-            deltaFreqAX[a]--;
+        U64 nRepl = 0;
+        for (U64 i = beg; i < end; i++) { // Transform AXYB -> AZB
+            U64 idxX = indices[i];
+            SymbolArray::iterator it = sa.iter(idxX);
+            SymbolArray::iterator itA(it);
+            int x = it.getSymbol(); if (x != X) continue; it.moveToNext();
+            int y = it.getSymbol(); if (y != Y) continue; U64 idxY = it.getIndex(); it.moveToNext();
+            int b = it.getSymbol();
+            int a = itA.moveToPrev() ? itA.getSymbol() : -1;
+            if (a != -1) {
+                deltaFreqAZ[a]++; vecAZ[a].push_back(itA.getIndex());
+                deltaFreqAX[a]--;
+            }
+            if (b != -1) {
+                deltaFreqZB[b]++; vecZB[b].push_back(idxX);
+                deltaFreqYB[b]--;
+            }
+            sa.combineSymbol(idxX, idxY, Z);
+            nRepl++;
         }
-        if (b != -1) {
-            deltaFreqZB[b]++; vecZB[b].push_back(idxX);
-            deltaFreqYB[b]--;
-        }
-        sa.combineSymbol(idxX, idxY, Z);
-        nRepl++;
-    }
-    return nRepl;
+        return nRepl;
+    };
+
+    return indexedReplace(0, indices.size(), delta);
 }
 
 void

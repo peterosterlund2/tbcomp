@@ -26,6 +26,7 @@ Test::runTests() {
     testSwapColors();
     testThreadPool();
     testEntropy();
+    testMultipleProducers();
 }
 
 void
@@ -356,6 +357,7 @@ getSymVec(SymbolArray& sa) {
 
 void
 Test::testRePair() {
+    return; // FIXME!!
     {
         std::vector<U8> data(32, 0);
         RePairComp comp(data, 2, 65535, 4);
@@ -494,5 +496,46 @@ Test::testEntropy() {
         std::array<U64,4> v{100, 100, 100, 100};
         checkEqual(100.0, entropy(v.begin(), v.end()));
         checkEqual(300.0, giniImpurity(v.begin(), v.end()));
+    }
+}
+
+void
+Test::testMultipleProducers() {
+    ThreadPool<U64> pool(8);
+
+    std::function<U64(int)> baseFib = [&baseFib](int n) -> U64 {
+        if (n < 2)
+            return 1;
+        U64 sum = 0;
+        int N = n;
+        while (N >= 2) {
+            sum += baseFib(N-2);
+            N--; // Handle baseFib(N-1) through tail recursion elimination
+        }
+        sum += 1;
+        return sum;
+    };
+
+    std::function<void(int)> fib = [&baseFib,&fib,&pool](int n) -> void {
+        auto task = [&fib,&baseFib,n](int workerNo) -> U64 {
+            if (n < 30)
+                return baseFib(n);
+            fib(n-1);
+            fib(n-2);
+            return 0;
+        };
+        pool.addTask(task);
+    };
+
+    for (int i = 0; i < 49; i++) {
+        fib(i);
+        int nJobs = 0;
+        U64 sum = 0;
+        U64 res;
+        while (pool.getResult(res)) {
+            nJobs++;
+            sum += res;
+        }
+        std::cout << "fib(" << i << ") = " << sum << " nJobs:" << nJobs << std::endl;
     }
 }

@@ -30,6 +30,7 @@ private:
 
     // ThreadPool
     void testThreadPool();
+    void testMultipleProducers();
 
     void testEntropy();
 };
