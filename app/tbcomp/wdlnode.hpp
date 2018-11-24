@@ -3,6 +3,7 @@
 
 #include "dtnode.hpp"
 #include "predicates.hpp"
+#include <mutex>
 #include <cmath>
 
 
@@ -133,6 +134,7 @@ private:
     /** Adjust counts based on fraction of positions sampled. */
     void reScale(std::unique_ptr<DT::Node>& node) const;
 
+    std::mutex mutex;
     StatsCollector<WTMPredicate, WDLStats> wtm;
     StatsCollector<InCheckPredicate, WDLStats> inCheck;
     StatsCollector<BishopPairPredicate<true>, WDLStats> bPairW;

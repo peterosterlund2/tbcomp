@@ -257,6 +257,7 @@ WDLStatsCollectorNode::iterateMembers(Func func) const {
 
 bool
 WDLStatsCollectorNode::applyData(const Position& pos, int value, DT::EvalContext& ctx) {
+    std::lock_guard<std::mutex> L(mutex);
     iterateMembers([&pos,value,&ctx](auto& collector) {
         collector.applyData(pos, ctx, value);
     });
