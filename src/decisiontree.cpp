@@ -32,12 +32,12 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
     }
 
     simplifyTree();
-    std::cout << '\n' << root->describe(0) << "entropy:" << root->entropy()
-              << " numLeafs:" << getNumLeafNodes() << std::endl;
+    double entr = root->entropy();
+    std::cout << '\n' << root->describe(0) << std::endl;
 
     makeEncoderTree();
-    std::cout << '\n' << root->describe(0)
-              << "numLeafs:" << getNumLeafNodes() << std::endl;
+    std::cout << '\n' << root->describe(0) << "entropy:" << entr
+              << " numLeafs:" << getNumLeafNodes() << std::endl;
 
     encodeValues(nThreads);
 }
