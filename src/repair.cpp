@@ -1,6 +1,6 @@
 #include "repair.hpp"
 #include "huffman.hpp"
-#include "threadpool.hpp"
+#include "taskrunner.hpp"
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/hashed_index.hpp>
@@ -12,10 +12,11 @@
 
 
 RePairComp::RePairComp(std::vector<U8>& inData, int minFreq, int maxSyms)
-    : sa(inData) {
+    : sa(inData),
+      nThreads(std::thread::hardware_concurrency()),
+      pool(nThreads) {
     std::cout << "nChunks:" << sa.getChunks().size()
               << " chunkSize:" << (sa.getChunks()[0].end - sa.getChunks()[0].beg) << std::endl;
-    nThreads = std::thread::hardware_concurrency();
     compress((U64)minFreq, maxSyms);
 }
 
@@ -236,7 +237,7 @@ RePairComp::initSymbols(RePairImpl::CompressData& cpData) {
     for (int i = 0; i < 256; i++)
         primitiveSyms[i] = 0;
     {
-        ThreadPool<std::array<int,256>> pool(nThreads);
+        TaskRunner<std::array<int,256>> runner(pool);
         for (int ch = 0; ch < nChunks; ch++) {
             auto task = [this,ch](int workerNo) {
                 std::array<int,256> result {};
@@ -248,10 +249,10 @@ RePairComp::initSymbols(RePairImpl::CompressData& cpData) {
                 }
                 return result;
             };
-            pool.addTask(task);
+            runner.addTask(task);
         }
         std::array<int,256> result;
-        while (pool.getResult(result))
+        while (runner.getResult(result))
             for (int i = 0; i < 256; i++)
                 primitiveSyms[i] |= result[i];
     }
@@ -267,7 +268,7 @@ RePairComp::initSymbols(RePairImpl::CompressData& cpData) {
 
     // Transform data[] to symbol values
     {
-        ThreadPool<int> pool(nThreads);
+        TaskRunner<int> runner(pool);
         for (int ch = 0; ch < nChunks; ch++) {
             auto task = [this,&primitiveSyms,ch](int workerNo) {
                 SymbolArray::iterator it = sa.iterAtChunk(ch);
@@ -276,11 +277,9 @@ RePairComp::initSymbols(RePairImpl::CompressData& cpData) {
                     it.putSymbol(primitiveSyms[it.getSymbol()]);
                 return 0;
             };
-            pool.addTask(task);
+            runner.addTask(task);
         }
-        int dummy;
-        while (pool.getResult(dummy))
-            ;
+        runner.waitAll();
     }
 
     // Create initial pair candidates
@@ -289,7 +288,7 @@ RePairComp::initSymbols(RePairImpl::CompressData& cpData) {
     };
     FreqInfo initialFreq;
     {
-        ThreadPool<FreqInfo> pool(nThreads);
+        TaskRunner<FreqInfo> runner(pool);
         for (int ch = 0; ch < nChunks; ch++) {
             auto task = [this,ch](int workerNo) {
                 FreqInfo fi;
@@ -303,10 +302,10 @@ RePairComp::initSymbols(RePairImpl::CompressData& cpData) {
                 }
                 return fi;
             };
-            pool.addTask(task);
+            runner.addTask(task);
         }
         FreqInfo fi;
-        while (pool.getResult(fi))
+        while (runner.getResult(fi))
             for (int i = 0; i < 256*256; i++)
                 initialFreq.freq[i] += fi.freq[i];
     }
@@ -361,7 +360,7 @@ RePairComp::refillCache(RePairImpl::CompressData& cpData, U64 maxCache) {
     // Process all chunks
     std::vector<std::vector<std::pair<U32,U64>>> cacheVec(nThreads);
     LookupTable lut(cache);
-    ThreadPool<int> pool(nThreads);
+    TaskRunner<int> runner(pool);
     const int nChunks = sa.getChunks().size();
     for (int ch = 0; ch < nChunks; ch++) {
         auto task = [this,&cacheVec,&lut,ch](int workerNo) {
@@ -381,11 +380,9 @@ RePairComp::refillCache(RePairImpl::CompressData& cpData, U64 maxCache) {
             }
             return 0;
         };
-        pool.addTask(task);
+        runner.addTask(task);
     }
-    int dummy;
-    while (pool.getResult(dummy))
-        ;
+    runner.waitAll();
     for (int t = 0; t < nThreads; t++)
         for (const auto& p : cacheVec[t])
             lut.lookup(p.first)->push_back(p.second);
@@ -406,10 +403,9 @@ RePairComp::refillCache(RePairImpl::CompressData& cpData, U64 maxCache) {
             }
             return 0;
         };
-        pool.addTask(task);
+        runner.addTask(task);
     }
-    while (pool.getResult(dummy))
-        ;
+    runner.waitAll();
 
     // Fill in PairCand::indices
     for (auto& e : cache) {
@@ -464,7 +460,7 @@ RePairComp::replacePairs(int X, int Y, int Z, RePairImpl::DeltaFreq& delta) {
     };
 
     std::mutex mutex;
-    ThreadPool<Result> pool(nThreads);
+    TaskRunner<Result> runner(pool);
     int ch0 = 0;
     for (int ch1 = 0; ch1 < nChunks; ch1++) {
         if (ch1 + 1 < nChunks && conflicts[ch1 + 1])
@@ -536,12 +532,12 @@ RePairComp::replacePairs(int X, int Y, int Z, RePairImpl::DeltaFreq& delta) {
             }
             return res;
         };
-        pool.addTask(task);
+        runner.addTask(task);
         ch0 = ch1 + 1;
     }
     U64 nRepl = 0;
     Result res(0);
-    while (pool.getResult(res)) {
+    while (runner.getResult(res)) {
         nRepl += res.nRepl;
         for (int i = 0; i < nSym; i++) {
             deltaFreqAZ[i] += res.deltaFreqAZ[i];

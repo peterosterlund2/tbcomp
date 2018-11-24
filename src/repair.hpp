@@ -3,6 +3,7 @@
 
 #include "bitbuffer.hpp"
 #include "symbolarray.hpp"
+#include "threadpool.hpp"
 #include <unordered_map>
 
 namespace RePairImpl {
@@ -63,6 +64,7 @@ private:
     std::vector<RePairSymbol> symbols;
     SymbolArray sa;
     int nThreads;
+    ThreadPool<int> pool;
 };
 
 /** Decompress data previously compressed by RePairComp. */
