@@ -16,7 +16,7 @@ public:
 
     /** Return true if making a new predicate node from statsFalse/True would
      *  be better (lower entropy) than keeping the current best node. */
-    static bool better(const DT::Node* best,
+    static bool better(const DT::Node* best, double& bestEntropy,
                        const WDLStats& statsFalse,
                        const WDLStats& statsTrue);
 

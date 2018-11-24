@@ -2,28 +2,20 @@
 #include "textio.hpp"
 #include <numeric>
 #include <cmath>
+#include <cfloat>
 
 
 bool
-WDLStats::better(const DT::Node* best,
+WDLStats::better(const DT::Node* best, double& bestEntropy,
                  const WDLStats& statsFalse,
                  const WDLStats& statsTrue) {
-    if (!best)
-        return true;
-    auto bestP = dynamic_cast<const DT::PredicateNode*>(best);
-    if (!bestP)
-        return true;
-    auto childL = dynamic_cast<const WDLStatsNode*>(bestP->left.get());
-    auto childR = dynamic_cast<const WDLStatsNode*>(bestP->right.get());
-    if (!childL || !childR)
-        return true;
-
-    double currEntropy = childL->stats.adjustedEntropy() +
-                         childR->stats.adjustedEntropy();
     double newEntropy = statsFalse.adjustedEntropy() +
                         statsTrue.adjustedEntropy();
-
-    return currEntropy > newEntropy;
+    if (newEntropy < bestEntropy) {
+        bestEntropy = newEntropy;
+        return true;
+    }
+    return best == nullptr;
 }
 
 double
@@ -33,8 +25,8 @@ WDLStats::entropy() const {
 
 double
 WDLStats::adjustedEntropy() const {
-    double sum = std::accumulate(count.begin(), count.end(), 0);
-    double bits = sum > 0 ? std::log2(sum) : 0;
+    U64 sum = std::accumulate(count.begin(), count.end(), 0);
+    int bits = (sum >= (1ULL<<32)) ? floorLog2((U32)(sum >> 32)) + 32 : floorLog2((U32)sum);
     return entropy() + (64 - bits) * 1e-4;
 }
 
@@ -226,40 +218,41 @@ WDLStatsCollectorNode::applyData(const Position& pos, int value, DT::EvalContext
 std::unique_ptr<DT::Node>
 WDLStatsCollectorNode::getBest() const {
     std::unique_ptr<DT::Node> best;
-    wtm.updateBest(best);
-    inCheck.updateBest(best);
-    bPairW.updateBest(best);
-    bPairB.updateBest(best);
-    sameB.updateBest(best);
-    oppoB.updateBest(best);
+    double bestEnt = DBL_MAX;
+    wtm.updateBest(best, bestEnt);
+    inCheck.updateBest(best, bestEnt);
+    bPairW.updateBest(best, bestEnt);
+    bPairB.updateBest(best, bestEnt);
+    sameB.updateBest(best, bestEnt);
+    oppoB.updateBest(best, bestEnt);
     for (auto& p : kPawnSq)
-        p.updateBest(best);
-    pRace.updateBest(best);
-    captWdl.updateBest(best);
+        p.updateBest(best, bestEnt);
+    pRace.updateBest(best, bestEnt);
+    captWdl.updateBest(best, bestEnt);
     for (auto& p : darkSquare)
-        p.updateBest(best);
+        p.updateBest(best, bestEnt);
     for (auto& p : fileRankW)
-        p.updateBest(best);
+        p.updateBest(best, bestEnt);
     for (auto& p : fileRankB)
-        p.updateBest(best);
+        p.updateBest(best, bestEnt);
     for (auto& p : fileDelta)
-        p.updateBest(best);
+        p.updateBest(best, bestEnt);
     for (auto& p : rankDelta)
-        p.updateBest(best);
+        p.updateBest(best, bestEnt);
     for (auto& p : fileDist)
-        p.updateBest(best);
+        p.updateBest(best, bestEnt);
     for (auto& p : rankDist)
-        p.updateBest(best);
+        p.updateBest(best, bestEnt);
     for (auto& p : kingDist)
-        p.updateBest(best);
+        p.updateBest(best, bestEnt);
     for (auto& p : taxiDist)
-        p.updateBest(best);
+        p.updateBest(best, bestEnt);
     for (auto& p : diag)
-        p.updateBest(best);
+        p.updateBest(best, bestEnt);
     for (auto& p : forks)
-        p.updateBest(best);
+        p.updateBest(best, bestEnt);
     for (auto& p : attacks)
-        p.updateBest(best);
+        p.updateBest(best, bestEnt);
     return best;
 }
 

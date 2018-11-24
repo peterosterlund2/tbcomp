@@ -1,7 +1,9 @@
 #ifndef PREDICATE_HPP_
 #define PREDICATE_HPP_
 
+#include "util/util.hpp"
 #include <memory>
+#include <numeric>
 #include <cmath>
 
 class Position;
@@ -25,17 +27,16 @@ public:
 /** Compute entropy of a distribution, measured in number of bytes. */
 template <typename Iter>
 double entropy(Iter beg, Iter end) {
-    double sum = 0;
+    U64 sum = std::accumulate(beg, end, 0);
+    if (sum == 0)
+        return 0;
     double entr = 0;
     for (Iter it = beg; it != end; ++it) {
         double c = *it;
         if (c > 0) {
-            sum += c;
-            entr += -c * std::log2(c);
+            entr += -c * std::log2(c / (double)sum);
         }
     }
-    if (sum > 0)
-        entr += sum * std::log2(sum);
     return entr / 8;
 }
 
