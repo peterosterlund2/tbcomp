@@ -23,8 +23,7 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
 
     for (int lev = 0; lev < maxDepth; lev++) {
         updateStats();
-        std::cout << '\n' << root->describe(0) << "lev:" << lev
-                  << " entropy:" << root->entropy()
+        std::cout << "lev:" << lev << " entropy:" << root->entropy()
                   << " numLeafs:" << getNumLeafNodes() << std::endl;
 
         bool finished = !selectBestPreds(lev + 1 < maxDepth);
