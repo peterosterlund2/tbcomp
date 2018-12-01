@@ -36,7 +36,7 @@ private:
      *  @return True if an MultiPredicate was created. */
     bool selectBestPreds(bool createNewStatsCollector);
 
-    /** Merge nodes if they are equivalent or if the entropy change is small enough. */
+    /** Merge nodes if they are equivalent or if the cost change is small enough. */
     void simplifyTree();
 
     /** Replace StatsNode with EncoderNode. */

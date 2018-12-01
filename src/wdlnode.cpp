@@ -1,33 +1,33 @@
 #include "wdlnode.hpp"
+#include "tbutil.hpp"
 #include "textio.hpp"
 #include <numeric>
-#include <cmath>
 #include <cfloat>
 
 
 bool
-WDLStats::better(const DT::Node* best, double& bestEntropy,
+WDLStats::better(const DT::Node* best, double& bestCost,
                  const WDLStats& statsFalse,
                  const WDLStats& statsTrue) {
-    double newEntropy = statsFalse.adjustedEntropy() +
-                        statsTrue.adjustedEntropy();
-    if (newEntropy < bestEntropy) {
-        bestEntropy = newEntropy;
+    double newCost = statsFalse.adjustedCost() +
+                     statsTrue.adjustedCost();
+    if (newCost < bestCost) {
+        bestCost = newCost;
         return true;
     }
     return best == nullptr;
 }
 
 double
-WDLStats::entropy() const {
+WDLStats::cost() const {
     return ::entropy(count.begin(), count.end());
 }
 
 double
-WDLStats::adjustedEntropy() const {
+WDLStats::adjustedCost() const {
     U64 sum = std::accumulate(count.begin(), count.end(), (U64)0);
     int bits = (sum >= (1ULL<<32)) ? floorLog2((U32)(sum >> 32)) + 32 : floorLog2((U32)sum);
-    return entropy() + (64 - bits) * 1e-4;
+    return cost() + (64 - bits) * 1e-4;
 }
 
 std::string
@@ -65,7 +65,7 @@ WDLStats::describe() const {
     for (int i = 0; i < N; i++)
         ss << srt[i].second;
 
-    ss << ' ' << entropy();
+    ss << ' ' << cost();
 
     return ss.str();
 }
@@ -73,8 +73,8 @@ WDLStats::describe() const {
 // ------------------------------------------------------------
 
 double
-WDLStatsNode::entropy() const {
-    return stats.entropy();
+WDLStatsNode::cost() const {
+    return stats.cost();
 }
 
 std::unique_ptr<DT::StatsNode>
@@ -106,8 +106,8 @@ WDLStatsNode::mergeWithNode(const DT::StatsNode& other) const {
 
     WDLStats sum(stats);
     sum.addStats(otherWdl.stats);
-    double entrDiff = sum.entropy() - (stats.entropy() + otherWdl.stats.entropy());
-    if (entrDiff <= 8)
+    double costDiff = sum.cost() - (stats.cost() + otherWdl.stats.cost());
+    if (costDiff <= 8)
         merge = true;
 
     if (!merge) {
@@ -218,41 +218,41 @@ WDLStatsCollectorNode::applyData(const Position& pos, int value, DT::EvalContext
 std::unique_ptr<DT::Node>
 WDLStatsCollectorNode::getBest() const {
     std::unique_ptr<DT::Node> best;
-    double bestEnt = DBL_MAX;
-    wtm.updateBest(best, bestEnt);
-    inCheck.updateBest(best, bestEnt);
-    bPairW.updateBest(best, bestEnt);
-    bPairB.updateBest(best, bestEnt);
-    sameB.updateBest(best, bestEnt);
-    oppoB.updateBest(best, bestEnt);
+    double bestCost = DBL_MAX;
+    wtm.updateBest(best, bestCost);
+    inCheck.updateBest(best, bestCost);
+    bPairW.updateBest(best, bestCost);
+    bPairB.updateBest(best, bestCost);
+    sameB.updateBest(best, bestCost);
+    oppoB.updateBest(best, bestCost);
     for (auto& p : kPawnSq)
-        p.updateBest(best, bestEnt);
-    pRace.updateBest(best, bestEnt);
-    captWdl.updateBest(best, bestEnt);
+        p.updateBest(best, bestCost);
+    pRace.updateBest(best, bestCost);
+    captWdl.updateBest(best, bestCost);
     for (auto& p : darkSquare)
-        p.updateBest(best, bestEnt);
+        p.updateBest(best, bestCost);
     for (auto& p : fileRankW)
-        p.updateBest(best, bestEnt);
+        p.updateBest(best, bestCost);
     for (auto& p : fileRankB)
-        p.updateBest(best, bestEnt);
+        p.updateBest(best, bestCost);
     for (auto& p : fileDelta)
-        p.updateBest(best, bestEnt);
+        p.updateBest(best, bestCost);
     for (auto& p : rankDelta)
-        p.updateBest(best, bestEnt);
+        p.updateBest(best, bestCost);
     for (auto& p : fileDist)
-        p.updateBest(best, bestEnt);
+        p.updateBest(best, bestCost);
     for (auto& p : rankDist)
-        p.updateBest(best, bestEnt);
+        p.updateBest(best, bestCost);
     for (auto& p : kingDist)
-        p.updateBest(best, bestEnt);
+        p.updateBest(best, bestCost);
     for (auto& p : taxiDist)
-        p.updateBest(best, bestEnt);
+        p.updateBest(best, bestCost);
     for (auto& p : diag)
-        p.updateBest(best, bestEnt);
+        p.updateBest(best, bestCost);
     for (auto& p : forks)
-        p.updateBest(best, bestEnt);
+        p.updateBest(best, bestCost);
     for (auto& p : attacks)
-        p.updateBest(best, bestEnt);
+        p.updateBest(best, bestCost);
     return best;
 }
 
@@ -313,15 +313,6 @@ WDLEncoderNode::subSetOf(const WDLEncoderNode& other) const {
         if (encTable[i] != other.encTable[i])
             return false;
     return true;
-}
-
-bool
-WDLEncoderNode::hasEntropy() const {
-    int nValid = 0;
-    for (int v : encTable)
-        if (v >= 0)
-            nValid++;
-    return nValid > 1;
 }
 
 // ------------------------------------------------------------

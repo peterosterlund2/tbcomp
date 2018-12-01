@@ -13,8 +13,8 @@ PredicateNode::PredicateNode()
 }
 
 double
-PredicateNode::entropy() const {
-    return left->entropy() + right->entropy();
+PredicateNode::cost() const {
+    return left->cost() + right->cost();
 }
 
 std::unique_ptr<StatsNode>
@@ -29,7 +29,7 @@ std::string
 PredicateNode::describe(int indentLevel) const {
     std::unique_ptr<StatsNode> s1 = left->getStats();
     std::unique_ptr<StatsNode> s2 = right->getStats();
-    double entropyAfterPred = s1->entropy() + s2->entropy();
+    double costAfterPred = s1->cost() + s2->cost();
 
     s1->addStats(s2.get());
 
@@ -42,7 +42,7 @@ PredicateNode::describe(int indentLevel) const {
         ss << statsStr.substr(0, statsStr.length() - 1) << ' ';
 
         std::stringstream ss2;
-        ss2 << std::scientific << std::setprecision(2) << entropyAfterPred;
+        ss2 << std::scientific << std::setprecision(2) << costAfterPred;
         ss << pred->name() << ' ' << ss2.str() << '\n';
     }
 
@@ -54,8 +54,8 @@ PredicateNode::describe(int indentLevel) const {
 // ------------------------------------------------------------
 
 double
-StatsCollectorNode::entropy() const {
-    return getBest()->entropy();
+StatsCollectorNode::cost() const {
+    return getBest()->cost();
 }
 
 std::unique_ptr<StatsNode>
@@ -71,7 +71,7 @@ StatsCollectorNode::describe(int indentLevel) const {
 // ------------------------------------------------------------
 
 double
-EncoderNode::entropy() const {
+EncoderNode::cost() const {
     assert(false);
     return 0.0;
 }

@@ -15,8 +15,8 @@ public:
     WDLStats() : count{} {}
 
     /** Return true if making a new predicate node from statsFalse/True would
-     *  be better (lower entropy) than keeping the current best node. */
-    static bool better(const DT::Node* best, double& bestEntropy,
+     *  be better (lower cost) than keeping the current best node. */
+    static bool better(const DT::Node* best, double& bestCost,
                        const WDLStats& statsFalse,
                        const WDLStats& statsTrue);
 
@@ -63,11 +63,11 @@ public:
         return true;
     }
 
-    /** Entropy measured in number of bytes. */
-    double entropy() const;
+    /** Cost (e.g. entropy measured in number of bytes). */
+    double cost() const;
 
-    /** Entropy adjusted to prefer an even split when the real entropy is the same. */
-    double adjustedEntropy() const;
+    /** Cost adjusted to prefer an even split when the real cost is the same. */
+    double adjustedCost() const;
 
     /** String representation of data, for debugging. */
     std::string describe() const;
@@ -79,7 +79,7 @@ class WDLStatsNode : public DT::StatsNode {
 public:
     explicit WDLStatsNode(const WDLStats& stats) : stats(stats) {}
 
-    double entropy() const override;
+    double cost() const override;
     std::unique_ptr<DT::StatsNode> getStats() const override;
     std::string describe(int indentLevel) const override;
 
@@ -149,9 +149,6 @@ public:
     /** Return true if "other" can encode all values "this" can encode,
      *  with the same encoding result. */
     bool subSetOf(const WDLEncoderNode& other) const;
-
-    /** Return true if this node corresponds to non-zero entropy. */
-    bool hasEntropy() const;
 
     bool operator==(const WDLEncoderNode& other) const {
         return encTable == other.encTable;

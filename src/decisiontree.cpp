@@ -23,7 +23,7 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
 
     for (int lev = 0; lev < maxDepth; lev++) {
         updateStats();
-        std::cout << "lev:" << lev << " entropy:" << root->entropy()
+        std::cout << "lev:" << lev << " cost:" << root->cost()
                   << " numLeafs:" << getNumLeafNodes() << std::endl;
 
         bool finished = !selectBestPreds(lev + 1 < maxDepth);
@@ -32,11 +32,11 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
     }
 
     simplifyTree();
-    double entr = root->entropy();
+    double cost = root->cost();
     std::cout << '\n' << root->describe(0) << std::endl;
 
     makeEncoderTree();
-    std::cout << '\n' << root->describe(0) << "entropy:" << entr
+    std::cout << '\n' << root->describe(0) << "cost:" << cost
               << " numLeafs:" << getNumLeafNodes() << std::endl;
 
     encodeValues(nThreads);
@@ -102,11 +102,11 @@ DecisionTree::selectBestPreds(bool createNewStatsCollector) {
             if (createNewStatsCollector) {
                 DT::PredicateNode* predNode = dynamic_cast<DT::PredicateNode*>(owner.get());
                 if (predNode) {
-                    if (predNode->left->entropy() > 0) {
+                    if (predNode->left->cost() > 0) {
                         predNode->left = nodeFactory.makeStatsCollector(ctx);
                         anyStatsCollectorCreated = true;
                     }
-                    if (predNode->right->entropy() > 0) {
+                    if (predNode->right->cost() > 0) {
                         predNode->right = nodeFactory.makeStatsCollector(ctx);
                         anyStatsCollectorCreated = true;
                     }

@@ -5,10 +5,12 @@
 #include "bitbuffer.hpp"
 #include <string>
 #include <vector>
+#include <numeric>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
-#include <stdio.h>
+#include <cstdio>
+#include <cmath>
 
 template<typename T> struct MakePrintable { static T convert(const T& v) { return v; } };
 template<> struct MakePrintable<U8> { static int convert(const U8& v) { return v; } };
@@ -62,5 +64,22 @@ inline U64 hashU64(U64 v) {
     v ^= v >> 43;
     return v;
 }
+
+/** Compute entropy of a distribution, measured in number of bytes. */
+template <typename Iter>
+double entropy(Iter beg, Iter end) {
+    U64 sum = std::accumulate(beg, end, (U64)0);
+    if (sum == 0)
+        return 0;
+    double entr = 0;
+    for (Iter it = beg; it != end; ++it) {
+        double c = *it;
+        if (c > 0) {
+            entr += -c * std::log2(c / (double)sum);
+        }
+    }
+    return entr / 8;
+}
+
 
 #endif /* TBUTIL_HPP_ */

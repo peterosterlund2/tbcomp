@@ -206,9 +206,9 @@ public:
         stats[pred.eval(pos,ctx)].applyData(value);
     }
 
-    /** Update best if this node has lower entropy. */
-    void updateBest(std::unique_ptr<DT::Node>& best, double& bestEntropy) const {
-        if (Stats::better(best.get(), bestEntropy, stats[0], stats[1]))
+    /** Update best if this node has lower cost. */
+    void updateBest(std::unique_ptr<DT::Node>& best, double& bestCost) const {
+        if (Stats::better(best.get(), bestCost, stats[0], stats[1]))
             best = Stats::makeNode(pred, stats[0], stats[1]);
     }
 private:
@@ -341,7 +341,7 @@ public:
         stats[idx].applyData(value);
     }
 
-    void updateBest(std::unique_ptr<DT::Node>& best, double& bestEntropy) const {
+    void updateBest(std::unique_ptr<DT::Node>& best, double& bestCost) const {
         const int N = maxVal - minVal + 1;
         Stats statsTrue, statsFalse;
         for (int i = 0; i < N; i++)
@@ -349,7 +349,7 @@ public:
         for (int i = 0; i < N-1; i++) {
             statsTrue.addStats(stats[i]);
             statsFalse.subStats(stats[i]);
-            if (Stats::better(best.get(), bestEntropy, statsFalse, statsTrue))
+            if (Stats::better(best.get(), bestCost, statsFalse, statsTrue))
                 best = Stats::makeNode(MultiPredBound<MultiPred>(pred, minVal + i),
                                        statsFalse, statsTrue);
         }

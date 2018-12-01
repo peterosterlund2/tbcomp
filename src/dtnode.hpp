@@ -27,8 +27,8 @@ public:
     explicit Node(NodeType type) : nodeType(type) {}
     virtual ~Node() = default;
 
-    /** Sum of entropy for all nodes in the tree. */
-    virtual double entropy() const = 0;
+    /** Sum of cost (e.g. entropy) for all nodes in the tree. */
+    virtual double cost() const = 0;
 
     /** Get statistics for this node. */
     virtual std::unique_ptr<StatsNode> getStats() const = 0;
@@ -86,7 +86,7 @@ public:
 
     /** Get left/right child depending on the predicate. */
     Node& getChild(const Position& pos, EvalContext& ctx);
-    double entropy() const override;
+    double cost() const override;
     std::unique_ptr<StatsNode> getStats() const override;
     std::string describe(int indentLevel) const override;
 
@@ -114,7 +114,7 @@ public:
 };
 
 /** A collection of all possible predicates. Collects statistics about
- *  how successful each predicate is at reducing the entropy of the data. */
+ *  how successful each predicate is at reducing the cost of the data. */
 class StatsCollectorNode : public Node {
 public:
     StatsCollectorNode() : Node(NodeType::STATSCOLLECTOR) {}
@@ -123,7 +123,7 @@ public:
      *  @return True if application was successful, false otherwise. */
     virtual bool applyData(const Position& pos, int value, EvalContext& ctx) = 0;
 
-    double entropy() const override;
+    double cost() const override;
     std::unique_ptr<StatsNode> getStats() const override;
     std::string describe(int indentLevel) const override;
 
@@ -139,7 +139,7 @@ public:
      *  encoded as 0, second most likely as 1, etc. */
     virtual int encodeValue(const Position& pos, int value, EvalContext& ctx) const = 0;
 
-    double entropy() const override;
+    double cost() const override;
 };
 
 class NodeFactory {
