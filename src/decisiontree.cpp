@@ -23,7 +23,7 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
 
     for (int lev = 0; lev < maxDepth; lev++) {
         updateStats();
-        std::cout << "lev:" << lev << " cost:" << root->cost()
+        std::cout << "lev:" << lev << " cost:" << root->cost(*ctx)
                   << " numLeafs:" << getNumLeafNodes() << std::endl;
 
         bool finished = !selectBestPreds(lev + 1 < maxDepth);
@@ -32,11 +32,11 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
     }
 
     simplifyTree();
-    double cost = root->cost();
-    std::cout << '\n' << root->describe(0) << std::endl;
+    double cost = root->cost(*ctx);
+    std::cout << '\n' << root->describe(0, *ctx) << std::endl;
 
     makeEncoderTree();
-    std::cout << '\n' << root->describe(0) << "cost:" << cost
+    std::cout << '\n' << root->describe(0, *ctx) << "cost:" << cost
               << " numLeafs:" << getNumLeafNodes() << std::endl;
 
     encodeValues(nThreads);
@@ -98,15 +98,15 @@ DecisionTree::selectBestPreds(bool createNewStatsCollector) {
             node.right->accept(*this, node.right);
         }
         void visit(DT::StatsCollectorNode& node, std::unique_ptr<DT::Node>& owner) {
-            owner = node.getBest();
+            owner = node.getBest(ctx);
             if (createNewStatsCollector) {
                 DT::PredicateNode* predNode = dynamic_cast<DT::PredicateNode*>(owner.get());
                 if (predNode) {
-                    if (predNode->left->cost() > 0) {
+                    if (predNode->left->cost(ctx) > 0) {
                         predNode->left = nodeFactory.makeStatsCollector(ctx);
                         anyStatsCollectorCreated = true;
                     }
-                    if (predNode->right->cost() > 0) {
+                    if (predNode->right->cost(ctx) > 0) {
                         predNode->right = nodeFactory.makeStatsCollector(ctx);
                         anyStatsCollectorCreated = true;
                     }
@@ -127,6 +127,7 @@ DecisionTree::selectBestPreds(bool createNewStatsCollector) {
 void
 DecisionTree::simplifyTree() {
     struct Visitor : public DT::Visitor {
+        explicit Visitor(const DT::EvalContext& ctx) : ctx(ctx) {}
         using DT::Visitor::visit;
         void visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner) {
             node.left->accept(*this, node.left);
@@ -135,13 +136,16 @@ DecisionTree::simplifyTree() {
             DT::StatsNode* left = dynamic_cast<DT::StatsNode*>(node.left.get());
             DT::StatsNode* right = dynamic_cast<DT::StatsNode*>(node.right.get());
             if (left && right) {
-                std::unique_ptr<DT::StatsNode> merged = left->mergeWithNode(*right);
+                std::unique_ptr<DT::StatsNode> merged = left->mergeWithNode(*right, ctx);
                 if (merged)
                     owner = std::move(merged);
             }
         }
+    private:
+        const DT::EvalContext& ctx;
     };
-    Visitor visitor;
+    std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
+    Visitor visitor(*ctx);
     root->accept(visitor, root);
 }
 
@@ -164,6 +168,7 @@ DecisionTree::makeEncoderTree() {
 int
 DecisionTree::getNumLeafNodes() {
     struct Visitor {
+        explicit Visitor(const DT::EvalContext& ctx) : ctx(ctx) {}
         void visit(DT::PredicateNode& node) {
             node.left->accept(*this);
             node.right->accept(*this);
@@ -172,15 +177,18 @@ DecisionTree::getNumLeafNodes() {
             nLeafs++;
         }
         void visit(DT::StatsCollectorNode& node) {
-            std::unique_ptr<DT::Node> best = node.getBest();
+            std::unique_ptr<DT::Node> best = node.getBest(ctx);
             best->accept(*this);
         }
         void visit(DT::EncoderNode& node) {
             nLeafs++;
         }
         int nLeafs = 0;
+    private:
+        const DT::EvalContext& ctx;
     };
-    Visitor visitor;
+    std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
+    Visitor visitor(*ctx);
     root->accept(visitor);
     return visitor.nLeafs;
 }

@@ -28,17 +28,17 @@ public:
     virtual ~Node() = default;
 
     /** Sum of cost (e.g. entropy) for all nodes in the tree. */
-    virtual double cost() const = 0;
+    virtual double cost(const DT::EvalContext& ctx) const = 0;
 
     /** Get statistics for this node. */
-    virtual std::unique_ptr<StatsNode> getStats() const = 0;
+    virtual std::unique_ptr<StatsNode> getStats(const DT::EvalContext& ctx) const = 0;
 
     /** Template based visitor pattern. */
     template <typename Visitor, typename... Args>
     void accept(Visitor& visitor, Args&&... args);
 
     /** Text description of tree rooted at this node. For debugging. */
-    virtual std::string describe(int indentLevel) const = 0;
+    virtual std::string describe(int indentLevel, const DT::EvalContext& ctx) const = 0;
 
 private:
     const NodeType nodeType;
@@ -86,9 +86,9 @@ public:
 
     /** Get left/right child depending on the predicate. */
     Node& getChild(const Position& pos, EvalContext& ctx);
-    double cost() const override;
-    std::unique_ptr<StatsNode> getStats() const override;
-    std::string describe(int indentLevel) const override;
+    double cost(const DT::EvalContext& ctx) const override;
+    std::unique_ptr<StatsNode> getStats(const DT::EvalContext& ctx) const override;
+    std::string describe(int indentLevel, const DT::EvalContext& ctx) const override;
 
     std::unique_ptr<Predicate> pred;
     std::unique_ptr<Node> left;
@@ -107,7 +107,8 @@ public:
 
     /** If merging this with "other" improves the tree, return
      *  the merged node. Otherwise return nullptr. */
-    virtual std::unique_ptr<StatsNode> mergeWithNode(const StatsNode& other) const = 0;
+    virtual std::unique_ptr<StatsNode> mergeWithNode(const StatsNode& other,
+                                                     const DT::EvalContext& ctx) const = 0;
 
     /** Get encoder node corresponding to the statistics in this node. */
     virtual std::unique_ptr<EncoderNode> getEncoder() const = 0;
@@ -123,12 +124,12 @@ public:
      *  @return True if application was successful, false otherwise. */
     virtual bool applyData(const Position& pos, int value, EvalContext& ctx) = 0;
 
-    double cost() const override;
-    std::unique_ptr<StatsNode> getStats() const override;
-    std::string describe(int indentLevel) const override;
+    double cost(const DT::EvalContext& ctx) const override;
+    std::unique_ptr<StatsNode> getStats(const DT::EvalContext& ctx) const override;
+    std::string describe(int indentLevel, const DT::EvalContext& ctx) const override;
 
     /** Create node that realizes the largest information gain. */
-    virtual std::unique_ptr<Node> getBest() const = 0;
+    virtual std::unique_ptr<Node> getBest(const DT::EvalContext& ctx) const = 0;
 };
 
 class EncoderNode : public Node {
@@ -139,7 +140,7 @@ public:
      *  encoded as 0, second most likely as 1, etc. */
     virtual int encodeValue(const Position& pos, int value, EvalContext& ctx) const = 0;
 
-    double cost() const override;
+    double cost(const DT::EvalContext& ctx) const override;
 };
 
 class NodeFactory {

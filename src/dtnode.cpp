@@ -13,23 +13,23 @@ PredicateNode::PredicateNode()
 }
 
 double
-PredicateNode::cost() const {
-    return left->cost() + right->cost();
+PredicateNode::cost(const DT::EvalContext& ctx) const {
+    return left->cost(ctx) + right->cost(ctx);
 }
 
 std::unique_ptr<StatsNode>
-PredicateNode::getStats() const {
-    std::unique_ptr<StatsNode> s1 = left->getStats();
-    std::unique_ptr<StatsNode> s2 = right->getStats();
+PredicateNode::getStats(const DT::EvalContext& ctx) const {
+    std::unique_ptr<StatsNode> s1 = left->getStats(ctx);
+    std::unique_ptr<StatsNode> s2 = right->getStats(ctx);
     s1->addStats(s2.get());
     return std::move(s1);
 }
 
 std::string
-PredicateNode::describe(int indentLevel) const {
-    std::unique_ptr<StatsNode> s1 = left->getStats();
-    std::unique_ptr<StatsNode> s2 = right->getStats();
-    double costAfterPred = s1->cost() + s2->cost();
+PredicateNode::describe(int indentLevel, const DT::EvalContext& ctx) const {
+    std::unique_ptr<StatsNode> s1 = left->getStats(ctx);
+    std::unique_ptr<StatsNode> s2 = right->getStats(ctx);
+    double costAfterPred = s1->cost(ctx) + s2->cost(ctx);
 
     s1->addStats(s2.get());
 
@@ -38,7 +38,7 @@ PredicateNode::describe(int indentLevel) const {
         ss << std::string(indentLevel*2, ' ');
         ss << pred->name() << '\n';
     } else {
-        std::string statsStr = s1->describe(indentLevel);
+        std::string statsStr = s1->describe(indentLevel, ctx);
         ss << statsStr.substr(0, statsStr.length() - 1) << ' ';
 
         std::stringstream ss2;
@@ -46,32 +46,32 @@ PredicateNode::describe(int indentLevel) const {
         ss << pred->name() << ' ' << ss2.str() << '\n';
     }
 
-    ss << left->describe(indentLevel + 1);
-    ss << right->describe(indentLevel + 1);
+    ss << left->describe(indentLevel + 1, ctx);
+    ss << right->describe(indentLevel + 1, ctx);
     return ss.str();
 }
 
 // ------------------------------------------------------------
 
 double
-StatsCollectorNode::cost() const {
-    return getBest()->cost();
+StatsCollectorNode::cost(const DT::EvalContext& ctx) const {
+    return getBest(ctx)->cost(ctx);
 }
 
 std::unique_ptr<StatsNode>
-StatsCollectorNode::getStats() const {
-    return getBest()->getStats();
+StatsCollectorNode::getStats(const DT::EvalContext& ctx) const {
+    return getBest(ctx)->getStats(ctx);
 }
 
 std::string
-StatsCollectorNode::describe(int indentLevel) const {
-    return getBest()->describe(indentLevel);
+StatsCollectorNode::describe(int indentLevel, const DT::EvalContext& ctx) const {
+    return getBest(ctx)->describe(indentLevel, ctx);
 }
 
 // ------------------------------------------------------------
 
 double
-EncoderNode::cost() const {
+EncoderNode::cost(const DT::EvalContext& ctx) const {
     assert(false);
     return 0.0;
 }

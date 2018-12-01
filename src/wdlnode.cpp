@@ -8,9 +8,11 @@
 bool
 WDLStats::better(const DT::Node* best, double& bestCost,
                  const WDLStats& statsFalse,
-                 const WDLStats& statsTrue) {
-    double newCost = statsFalse.adjustedCost() +
-                     statsTrue.adjustedCost();
+                 const WDLStats& statsTrue,
+                 const DT::EvalContext& ctx) {
+    bool useGini = static_cast<const WDLEvalContext&>(ctx).useGini();
+    double newCost = statsFalse.adjustedCost(useGini) +
+                     statsTrue.adjustedCost(useGini);
     if (newCost < bestCost) {
         bestCost = newCost;
         return true;
@@ -19,19 +21,23 @@ WDLStats::better(const DT::Node* best, double& bestCost,
 }
 
 double
-WDLStats::cost() const {
-    return ::entropy(count.begin(), count.end());
+WDLStats::cost(bool useGini) const {
+    if (useGini) {
+        return ::giniImpurity(count.begin(), count.end());
+    } else {
+        return ::entropy(count.begin(), count.end());
+    }
 }
 
 double
-WDLStats::adjustedCost() const {
+WDLStats::adjustedCost(bool useGini) const {
     U64 sum = std::accumulate(count.begin(), count.end(), (U64)0);
     int bits = (sum >= (1ULL<<32)) ? floorLog2((U32)(sum >> 32)) + 32 : floorLog2((U32)sum);
-    return cost() + (64 - bits) * 1e-4;
+    return cost(useGini) + (64 - bits) * 1e-4;
 }
 
 std::string
-WDLStats::describe() const {
+WDLStats::describe(const DT::EvalContext& ctx) const {
     constexpr int N = nWdlVals;
     std::array<double,N> cnt;
     double tot = 0.0;
@@ -65,7 +71,8 @@ WDLStats::describe() const {
     for (int i = 0; i < N; i++)
         ss << srt[i].second;
 
-    ss << ' ' << cost();
+    bool useGini = static_cast<const WDLEvalContext&>(ctx).useGini();
+    ss << ' ' << cost(useGini);
 
     return ss.str();
 }
@@ -73,19 +80,20 @@ WDLStats::describe() const {
 // ------------------------------------------------------------
 
 double
-WDLStatsNode::cost() const {
-    return stats.cost();
+WDLStatsNode::cost(const DT::EvalContext& ctx) const {
+    bool useGini = static_cast<const WDLEvalContext&>(ctx).useGini();
+    return stats.cost(useGini);
 }
 
 std::unique_ptr<DT::StatsNode>
-WDLStatsNode::getStats() const {
+WDLStatsNode::getStats(const DT::EvalContext& ctx) const {
     return make_unique<WDLStatsNode>(*this);
 }
 
 std::string
-WDLStatsNode::describe(int indentLevel) const {
+WDLStatsNode::describe(int indentLevel, const DT::EvalContext& ctx) const {
     std::stringstream ss;
-    ss << std::string(indentLevel*2, ' ') << stats.describe() << '\n';
+    ss << std::string(indentLevel*2, ' ') << stats.describe(ctx) << '\n';
     return ss.str();
 }
 
@@ -100,13 +108,14 @@ WDLStatsNode::isEmpty() const {
 }
 
 std::unique_ptr<DT::StatsNode>
-WDLStatsNode::mergeWithNode(const DT::StatsNode& other) const {
+WDLStatsNode::mergeWithNode(const DT::StatsNode& other, const DT::EvalContext& ctx) const {
     const WDLStatsNode& otherWdl = static_cast<const WDLStatsNode&>(other);
     bool merge = false;
 
     WDLStats sum(stats);
     sum.addStats(otherWdl.stats);
-    double costDiff = sum.cost() - (stats.cost() + otherWdl.stats.cost());
+    bool useGini = static_cast<const WDLEvalContext&>(ctx).useGini();
+    double costDiff = sum.cost(useGini) - (stats.cost(useGini) + otherWdl.stats.cost(useGini));
     if (costDiff <= 8)
         merge = true;
 
@@ -216,43 +225,43 @@ WDLStatsCollectorNode::applyData(const Position& pos, int value, DT::EvalContext
 }
 
 std::unique_ptr<DT::Node>
-WDLStatsCollectorNode::getBest() const {
+WDLStatsCollectorNode::getBest(const DT::EvalContext& ctx) const {
     std::unique_ptr<DT::Node> best;
     double bestCost = DBL_MAX;
-    wtm.updateBest(best, bestCost);
-    inCheck.updateBest(best, bestCost);
-    bPairW.updateBest(best, bestCost);
-    bPairB.updateBest(best, bestCost);
-    sameB.updateBest(best, bestCost);
-    oppoB.updateBest(best, bestCost);
+    wtm.updateBest(best, bestCost, ctx);
+    inCheck.updateBest(best, bestCost, ctx);
+    bPairW.updateBest(best, bestCost, ctx);
+    bPairB.updateBest(best, bestCost, ctx);
+    sameB.updateBest(best, bestCost, ctx);
+    oppoB.updateBest(best, bestCost, ctx);
     for (auto& p : kPawnSq)
-        p.updateBest(best, bestCost);
-    pRace.updateBest(best, bestCost);
-    captWdl.updateBest(best, bestCost);
+        p.updateBest(best, bestCost, ctx);
+    pRace.updateBest(best, bestCost, ctx);
+    captWdl.updateBest(best, bestCost, ctx);
     for (auto& p : darkSquare)
-        p.updateBest(best, bestCost);
+        p.updateBest(best, bestCost, ctx);
     for (auto& p : fileRankW)
-        p.updateBest(best, bestCost);
+        p.updateBest(best, bestCost, ctx);
     for (auto& p : fileRankB)
-        p.updateBest(best, bestCost);
+        p.updateBest(best, bestCost, ctx);
     for (auto& p : fileDelta)
-        p.updateBest(best, bestCost);
+        p.updateBest(best, bestCost, ctx);
     for (auto& p : rankDelta)
-        p.updateBest(best, bestCost);
+        p.updateBest(best, bestCost, ctx);
     for (auto& p : fileDist)
-        p.updateBest(best, bestCost);
+        p.updateBest(best, bestCost, ctx);
     for (auto& p : rankDist)
-        p.updateBest(best, bestCost);
+        p.updateBest(best, bestCost, ctx);
     for (auto& p : kingDist)
-        p.updateBest(best, bestCost);
+        p.updateBest(best, bestCost, ctx);
     for (auto& p : taxiDist)
-        p.updateBest(best, bestCost);
+        p.updateBest(best, bestCost, ctx);
     for (auto& p : diag)
-        p.updateBest(best, bestCost);
+        p.updateBest(best, bestCost, ctx);
     for (auto& p : forks)
-        p.updateBest(best, bestCost);
+        p.updateBest(best, bestCost, ctx);
     for (auto& p : attacks)
-        p.updateBest(best, bestCost);
+        p.updateBest(best, bestCost, ctx);
     return best;
 }
 
@@ -271,7 +280,7 @@ WDLEncoderNode::WDLEncoderNode(const WDLStats& stats) {
 
 int
 WDLEncoderNode::encodeValue(const Position& pos, int value, DT::EvalContext& ctx) const {
-    const WDLEvalContext& wdlCtx = static_cast<const WDLEvalContext&>(ctx);
+    const auto& wdlCtx = static_cast<const WDLEvalContext&>(ctx);
     constexpr int N = WDLStats::nWdlVals;
     int ret = 0;
     for (int i = 0; i < N; i++) {
@@ -289,12 +298,12 @@ WDLEncoderNode::encodeValue(const Position& pos, int value, DT::EvalContext& ctx
 }
 
 std::unique_ptr<DT::StatsNode>
-WDLEncoderNode::getStats() const {
+WDLEncoderNode::getStats(const DT::EvalContext& ctx) const {
     return make_unique<WDLStatsNode>(WDLStats{});
 }
 
 std::string
-WDLEncoderNode::describe(int indentLevel) const {
+WDLEncoderNode::describe(int indentLevel, const DT::EvalContext& ctx) const {
     std::stringstream ss;
     ss << std::string(indentLevel*2, ' ');
     for (int v : encTable) {
@@ -324,7 +333,7 @@ WDLNodeFactory::makeStatsCollector(DT::EvalContext& ctx) {
 
 std::unique_ptr<DT::EvalContext>
 WDLNodeFactory::makeEvalContext(const PosIndex& posIdx) {
-    return make_unique<WDLEvalContext>(posIdx);
+    return make_unique<WDLEvalContext>(posIdx, useGiniImpurity);
 }
 
 // ------------------------------------------------------------

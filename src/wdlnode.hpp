@@ -18,7 +18,8 @@ public:
      *  be better (lower cost) than keeping the current best node. */
     static bool better(const DT::Node* best, double& bestCost,
                        const WDLStats& statsFalse,
-                       const WDLStats& statsTrue);
+                       const WDLStats& statsTrue,
+                       const DT::EvalContext& ctx);
 
     template <typename Pred>
     static std::unique_ptr<DT::Node> makeNode(const Pred& pred,
@@ -63,29 +64,31 @@ public:
         return true;
     }
 
-    /** Cost (e.g. entropy measured in number of bytes). */
-    double cost() const;
-
-    /** Cost adjusted to prefer an even split when the real cost is the same. */
-    double adjustedCost() const;
+    /** Return cost. (entropy or Gini impurity). */
+    double cost(bool useGini) const;
 
     /** String representation of data, for debugging. */
-    std::string describe() const;
+    std::string describe(const DT::EvalContext& ctx) const;
 
     std::array<U64,nWdlVals> count; // loss, blessed loss, draw, cursed win, win
+
+private:
+    /** Cost adjusted to prefer an even split when the real cost is the same. */
+    double adjustedCost(bool useGini) const;
 };
 
 class WDLStatsNode : public DT::StatsNode {
 public:
     explicit WDLStatsNode(const WDLStats& stats) : stats(stats) {}
 
-    double cost() const override;
-    std::unique_ptr<DT::StatsNode> getStats() const override;
-    std::string describe(int indentLevel) const override;
+    double cost(const DT::EvalContext& ctx) const override;
+    std::unique_ptr<DT::StatsNode> getStats(const DT::EvalContext& ctx) const override;
+    std::string describe(int indentLevel, const DT::EvalContext& ctx) const override;
 
     void addStats(const DT::StatsNode* other) override;
     bool isEmpty() const override;
-    std::unique_ptr<DT::StatsNode> mergeWithNode(const DT::StatsNode& other) const override;
+    std::unique_ptr<DT::StatsNode> mergeWithNode(const DT::StatsNode& other,
+                                                 const DT::EvalContext& ctx) const override;
 
     std::unique_ptr<DT::EncoderNode> getEncoder() const override;
 
@@ -112,7 +115,7 @@ public:
 
     bool applyData(const Position& pos, int value, DT::EvalContext& ctx) override;
 
-    std::unique_ptr<DT::Node> getBest() const override;
+    std::unique_ptr<DT::Node> getBest(const DT::EvalContext& ctx) const override;
 
 private:
     StatsCollector<WTMPredicate, WDLStats> wtm;
@@ -143,8 +146,8 @@ public:
     WDLEncoderNode(const WDLStats& stats);
 
     int encodeValue(const Position& pos, int value, DT::EvalContext& ctx) const override;
-    std::unique_ptr<DT::StatsNode> getStats() const override;
-    std::string describe(int indentLevel) const override;
+    std::unique_ptr<DT::StatsNode> getStats(const DT::EvalContext& ctx) const override;
+    std::string describe(int indentLevel, const DT::EvalContext& ctx) const override;
 
     /** Return true if "other" can encode all values "this" can encode,
      *  with the same encoding result. */
@@ -208,21 +211,29 @@ private:
 
 class WDLNodeFactory : public DT::NodeFactory {
 public:
+    explicit WDLNodeFactory(bool gini) : useGiniImpurity(gini) {}
+
     std::unique_ptr<DT::StatsCollectorNode> makeStatsCollector(DT::EvalContext& ctx) override;
 
     std::unique_ptr<DT::EvalContext> makeEvalContext(const PosIndex& posIdx) override;
+
+private:
+    const bool useGiniImpurity;
 };
 
 class WDLEvalContext : public DT::EvalContext {
 public:
-    WDLEvalContext(const PosIndex& posIdx) : DT::EvalContext(posIdx) {}
+    WDLEvalContext(const PosIndex& posIdx, bool gini) : DT::EvalContext(posIdx), gini(gini) {}
 
     void init(const Position& pos, const DT::UncompressedData& data, U64 idx) override;
 
     int getCaptureWdl() const { return captWdl; }
 
+    bool useGini() const { return gini; }
+
 private:
     int captWdl = 0;
+    const bool gini;
 };
 
 

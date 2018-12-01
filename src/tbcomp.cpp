@@ -6,6 +6,7 @@
  */
 
 #include "tbutil.hpp"
+#include "util/util.hpp"
 #include "huffman.hpp"
 #include "repair.hpp"
 #include "test.hpp"
@@ -40,7 +41,8 @@ usage() {
     std::cerr << " idx2pos nwq nwr nwb nwn nwp  nbq nbr nbb nbn nbp  idx\n";
     std::cerr << " idxtest fen\n";
 
-    std::cerr << " wdldump tbType [maxTreeDepth]\n";
+    std::cerr << " wdldump [-g] tbType [maxTreeDepth]\n";
+    std::cerr << "     -g : Use Gini impurity instead of entropy\n";
 
     std::cerr << std::flush;
     ::exit(2);
@@ -253,12 +255,28 @@ main(int argc, char* argv[]) {
             idxTest(fen);
 
         } else if (cmd == "wdldump") {
-            if (argc < 3 || argc > 4)
+            int idx = 2;
+            if (idx >= argc)
                 usage();
+            bool useGini = false;
+            if (argv[idx] == std::string("-g")) {
+                useGini = true;
+                idx++;
+            }
+
+            if (idx >= argc)
+                usage();
+            std::string tbType(argv[idx++]);
+
             int maxTreeDepth = 10;
-            if (argc > 3)
-                maxTreeDepth = std::atoi(argv[3]);
-            WdlCompress wdlComp(argv[2]);
+            if (idx < argc)
+                if (!str2Num(argv[idx++], maxTreeDepth))
+                    usage();
+
+            if (idx != argc)
+                usage();
+
+            WdlCompress wdlComp(tbType, useGini);
             wdlComp.wdlDump("out.bin", maxTreeDepth);
 
         } else {

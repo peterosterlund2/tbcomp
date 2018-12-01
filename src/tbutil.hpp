@@ -81,5 +81,18 @@ double entropy(Iter beg, Iter end) {
     return entr / 8;
 }
 
+/** Compute Gini impurity of a distribution. */
+template <typename Iter>
+double giniImpurity(Iter beg, Iter end) {
+    U64 sum = std::accumulate(beg, end, (U64)0);
+    if (sum == 0)
+        return 0;
+    double iSum = 1.0 / sum;
+    double gini = sum;
+    for (Iter it = beg; it != end; ++it)
+        gini -= iSum * (*it) * (*it);
+    return gini;
+}
+
 
 #endif /* TBUTIL_HPP_ */
