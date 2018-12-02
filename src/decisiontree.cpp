@@ -18,7 +18,7 @@ DecisionTree::DecisionTree(DT::NodeFactory& nodeFactory, const PosIndex& posIdx,
 
 void
 DecisionTree::computeTree(int maxDepth, int nThreads) {
-    std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
+    auto ctx = nodeFactory.makeEvalContext(posIdx);
     root = nodeFactory.makeStatsCollector(*ctx);
 
     for (int lev = 0; lev < maxDepth; lev++) {
@@ -46,7 +46,7 @@ void
 DecisionTree::updateStats() {
     U64 nPos = posIdx.tbSize();
     Position pos;
-    std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
+    auto ctx = nodeFactory.makeEvalContext(posIdx);
 
     struct Visitor {
         Visitor(const Position& pos, DT::EvalContext& ctx) : pos(pos), ctx(ctx) {}
@@ -118,7 +118,7 @@ DecisionTree::selectBestPreds(bool createNewStatsCollector) {
         DT::EvalContext& ctx;
         bool anyStatsCollectorCreated = false;
     };
-    std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
+    auto ctx = nodeFactory.makeEvalContext(posIdx);
     Visitor visitor(createNewStatsCollector, nodeFactory, *ctx);
     root->accept(visitor, root);
     return visitor.anyStatsCollectorCreated;
@@ -144,7 +144,7 @@ DecisionTree::simplifyTree() {
     private:
         const DT::EvalContext& ctx;
     };
-    std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
+    auto ctx = nodeFactory.makeEvalContext(posIdx);
     Visitor visitor(*ctx);
     root->accept(visitor, root);
 }
@@ -177,8 +177,7 @@ DecisionTree::getNumLeafNodes() {
             nLeafs++;
         }
         void visit(DT::StatsCollectorNode& node) {
-            std::unique_ptr<DT::Node> best = node.getBest(ctx);
-            best->accept(*this);
+            node.getBest(ctx)->accept(*this);
         }
         void visit(DT::EncoderNode& node) {
             nLeafs++;
@@ -187,7 +186,7 @@ DecisionTree::getNumLeafNodes() {
     private:
         const DT::EvalContext& ctx;
     };
-    std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
+    auto ctx = nodeFactory.makeEvalContext(posIdx);
     Visitor visitor(*ctx);
     root->accept(visitor);
     return visitor.nLeafs;
@@ -201,7 +200,7 @@ DecisionTree::encodeValues(int nThreads) {
     for (U64 b = 0; b < size; b += batchSize) {
         auto task = [this,size,batchSize,b](int workerNo) {
             Position pos;
-            std::unique_ptr<DT::EvalContext> ctx = nodeFactory.makeEvalContext(posIdx);
+            auto ctx = nodeFactory.makeEvalContext(posIdx);
             struct Visitor {
                 Visitor(const Position& pos, DT::EvalContext& ctx) : pos(pos), ctx(ctx) {}
                 void visit(DT::PredicateNode& node) {
@@ -219,7 +218,6 @@ DecisionTree::encodeValues(int nThreads) {
                 const Position& pos;
                 DT::EvalContext& ctx;
                 int value = 0;
-                bool result = false;
             };
             Visitor visitor(pos, *ctx);
 
