@@ -211,7 +211,8 @@ private:
 
 class WDLNodeFactory : public DT::NodeFactory {
 public:
-    explicit WDLNodeFactory(bool gini) : useGiniImpurity(gini) {}
+    explicit WDLNodeFactory(bool gini, double mergeThreshold)
+    : useGiniImpurity(gini), mergeThreshold(mergeThreshold) {}
 
     std::unique_ptr<DT::StatsCollectorNode> makeStatsCollector(DT::EvalContext& ctx) override;
 
@@ -219,21 +220,25 @@ public:
 
 private:
     const bool useGiniImpurity;
+    const double mergeThreshold;
 };
 
 class WDLEvalContext : public DT::EvalContext {
 public:
-    WDLEvalContext(const PosIndex& posIdx, bool gini) : DT::EvalContext(posIdx), gini(gini) {}
+    WDLEvalContext(const PosIndex& posIdx, bool gini, double mergeThreshold)
+    : DT::EvalContext(posIdx), gini(gini), mergeThreshold(mergeThreshold) {}
 
     void init(const Position& pos, const DT::UncompressedData& data, U64 idx) override;
 
     int getCaptureWdl() const { return captWdl; }
 
     bool useGini() const { return gini; }
+    double getMergeThreshold() const { return mergeThreshold; }
 
 private:
     int captWdl = 0;
     const bool gini;
+    const double mergeThreshold;
 };
 
 

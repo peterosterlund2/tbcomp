@@ -58,8 +58,9 @@ getPieces(const std::string& tbType, std::vector<int>& pieces) {
         throw ChessParseError("Invalid tbType: " + tbType);
 }
 
-WdlCompress::WdlCompress(const std::string& tbType, bool useGini)
-    : useGini(useGini) {
+WdlCompress::WdlCompress(const std::string& tbType, bool useGini,
+                         double mergeThreshold)
+    : useGini(useGini), mergeThreshold(mergeThreshold) {
     nThreads = std::thread::hardware_concurrency();
     ComputerPlayer::initEngine();
     setupTB();
@@ -95,7 +96,7 @@ WdlCompress::wdlDump(const std::string& outFile, int maxTreeDepth) {
     BitArray active(data.size(), true);
     replaceDontCares(data, active);
 
-    WDLNodeFactory factory(useGini);
+    WDLNodeFactory factory(useGini, mergeThreshold);
     WDLUncompressedData uncompData(data);
     DecisionTree dt(factory, posIdx, uncompData, active);
     dt.computeTree(maxTreeDepth, nThreads);

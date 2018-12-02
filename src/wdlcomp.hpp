@@ -13,7 +13,7 @@ class BitArray;
 /** Compress a WDL tablebase file. */
 class WdlCompress {
 public:
-    WdlCompress(const std::string& tbType, bool useGini);
+    WdlCompress(const std::string& tbType, bool useGini, double mergeThreshold);
 
     void wdlDump(const std::string& outFile, int maxTreeDepth);
 
@@ -27,6 +27,7 @@ private:
     void writeFile(const std::vector<WDLInfo>& data, const std::string& outFile) const;
 
     const bool useGini;
+    const double mergeThreshold;
     int nThreads;
     std::unique_ptr<PosIndex> posIndex;
 

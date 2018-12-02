@@ -114,9 +114,10 @@ WDLStatsNode::mergeWithNode(const DT::StatsNode& other, const DT::EvalContext& c
 
     WDLStats sum(stats);
     sum.addStats(otherWdl.stats);
-    bool useGini = static_cast<const WDLEvalContext&>(ctx).useGini();
+    const auto& wdlCtx = static_cast<const WDLEvalContext&>(ctx);
+    bool useGini = wdlCtx.useGini();
     double costDiff = sum.cost(useGini) - (stats.cost(useGini) + otherWdl.stats.cost(useGini));
-    if (costDiff <= 8)
+    if (costDiff <= wdlCtx.getMergeThreshold())
         merge = true;
 
     if (!merge) {
@@ -333,7 +334,7 @@ WDLNodeFactory::makeStatsCollector(DT::EvalContext& ctx) {
 
 std::unique_ptr<DT::EvalContext>
 WDLNodeFactory::makeEvalContext(const PosIndex& posIdx) {
-    return make_unique<WDLEvalContext>(posIdx, useGiniImpurity);
+    return make_unique<WDLEvalContext>(posIdx, useGiniImpurity, mergeThreshold);
 }
 
 // ------------------------------------------------------------
