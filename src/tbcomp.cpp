@@ -42,7 +42,8 @@ usage() {
     std::cerr << " idxtest fen\n";
 
     std::cerr << " wdldump [-g] [-thres val] tbType [maxTreeDepth]\n";
-    std::cerr << "     -g : Use Gini impurity instead of entropy\n";
+    std::cerr << "     -g     : Use Gini impurity instead of entropy\n";
+    std::cerr << "     -d     : Maximum depth of decision tree, default 10\n";
     std::cerr << "     -thres : Tree node merge threshold, default 8.0\n";
 
     std::cerr << std::flush;
@@ -258,6 +259,7 @@ main(int argc, char* argv[]) {
         } else if (cmd == "wdldump") {
             int idx = 2;
             bool useGini = false;
+            int maxTreeDepth = 10;
             double mergeThreshold = 8.0;
             while (true) {
                 if (idx >= argc)
@@ -265,6 +267,10 @@ main(int argc, char* argv[]) {
                 if (argv[idx] == std::string("-g")) {
                     useGini = true;
                     idx++;
+                } else if (argv[idx] == std::string("-d")) {
+                    idx++;
+                    if (idx >= argc || !str2Num(argv[idx++], maxTreeDepth))
+                        usage();
                 } else if (argv[idx] == std::string("-thres")) {
                     idx++;
                     if (idx >= argc || !str2Num(argv[idx++], mergeThreshold))
@@ -274,11 +280,6 @@ main(int argc, char* argv[]) {
                 }
             }
             std::string tbType(argv[idx++]);
-
-            int maxTreeDepth = 10;
-            if (idx < argc)
-                if (!str2Num(argv[idx++], maxTreeDepth))
-                    usage();
 
             if (idx != argc)
                 usage();
