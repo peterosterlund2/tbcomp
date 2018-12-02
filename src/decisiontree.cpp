@@ -288,7 +288,7 @@ DecisionTree::logMisPredicted(U64 remaining) {
         bool valid = posIdx.index2Pos(idx, pos);
         assert(valid);
         of << "idx:" << idx << " val:" << data.getEncoded(idx)
-           << " fen:" << TextIO::toFEN(pos) << '\n' << TextIO::asciiBoard(pos) << std::flush;
+           << " fen:" << TextIO::toFEN(pos) << '\n' << TextIO::asciiBoard(pos);
     }
 }
 
