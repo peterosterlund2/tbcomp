@@ -210,6 +210,9 @@ PosIndex::pos2Index(Position& pos) const {
 
 bool
 PosIndex::index2Pos(U64 idx, Position& pos) const {
+    for (U64 m = pos.occupiedBB(); m; ) // Clear position
+        pos.clearPiece(BitBoard::extractSquare(m));
+
     std::array<int,5> wIdx, bIdx;
 
     for (int i = 0; i < 5; i++) {

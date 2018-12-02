@@ -118,8 +118,6 @@ WdlCompress::initializeData(std::vector<WDLInfo>& data) {
             U64 end = std::min(b + batchSize, size);
             Position pos;
             for (U64 idx = b; idx < end; idx++) {
-                for (U64 m = pos.occupiedBB(); m; ) // Clear position
-                    pos.clearPiece(BitBoard::extractSquare(m));
                 bool valid = posIdx.index2Pos(idx, pos);
                 if (valid && MoveGen::canTakeKing(pos))
                     valid = false;
@@ -227,8 +225,6 @@ WdlCompress::computeOptimalCaptures(std::vector<WDLInfo>& data) const {
             for (U64 idx = b; idx < end; idx++) {
                 if (data[idx].getWdl() == 3 || data[idx].getWdl() == 4)
                     continue;
-                for (U64 m = pos.occupiedBB(); m; ) // Clear position
-                    pos.clearPiece(BitBoard::extractSquare(m));
                 posIdx.index2Pos(idx, pos);
                 int captWdl = data[idx].getCaptureWdl();
                 if (captWdl == (pos.isWhiteMove() ? bestWtm : bestBtm))

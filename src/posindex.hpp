@@ -77,8 +77,7 @@ public:
      *  En passant square is updated in pos but ignored in the index calculation. */
     U64 pos2Index(Position& pos) const;
 
-    /** Create a position corresponding to index. "pos" is assumed to be
-     *  the empty board on input.
+    /** Create a position corresponding to index.
      *  If false is returned, index does not correspond to a valid position.
      *  If true is returned, the position can still be invalid if a king capture is possible. */
     bool index2Pos(U64 idx, Position& pos) const;

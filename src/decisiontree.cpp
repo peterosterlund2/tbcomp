@@ -73,8 +73,6 @@ DecisionTree::updateStats() {
         if (!active.get(idx) || data.isHandled(idx))
             continue;
 
-        for (U64 m = pos.occupiedBB(); m; ) // Clear position
-            pos.clearPiece(BitBoard::extractSquare(m));
         bool valid = posIdx.index2Pos(idx, pos);
         assert(valid);
         ctx->init(pos, data, idx);
@@ -227,8 +225,6 @@ DecisionTree::encodeValues(int nThreads) {
                 if (!active.get(idx))
                     continue;
 
-                for (U64 m = pos.occupiedBB(); m; ) // Clear position
-                    pos.clearPiece(BitBoard::extractSquare(m));
                 bool valid = posIdx.index2Pos(idx, pos);
                 assert(valid);
                 ctx->init(pos, data, idx);
@@ -289,8 +285,6 @@ DecisionTree::logMisPredicted(U64 remaining) {
     std::ofstream of("mispredict.txt");
     Position pos;
     for (U64 idx : toLog) {
-        for (U64 m = pos.occupiedBB(); m; ) // Clear position
-            pos.clearPiece(BitBoard::extractSquare(m));
         bool valid = posIdx.index2Pos(idx, pos);
         assert(valid);
         of << "idx:" << idx << " val:" << data.getEncoded(idx)
