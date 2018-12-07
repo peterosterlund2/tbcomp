@@ -115,7 +115,7 @@ WDLStatsNode::mergeWithNode(const DT::StatsNode& other, const DT::EvalContext& c
     WDLStats sum(stats);
     sum.addStats(otherWdl.stats);
     const auto& wdlCtx = static_cast<const WDLEvalContext&>(ctx);
-    bool useGini = wdlCtx.useGini();
+    bool useGini = false;
     double costDiff = sum.cost(useGini) - (stats.cost(useGini) + otherWdl.stats.cost(useGini));
     if (costDiff <= wdlCtx.getMergeThreshold())
         merge = true;
