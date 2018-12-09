@@ -70,11 +70,14 @@ public:
     /** String representation of data, for debugging. */
     std::string describe(const DT::EvalContext& ctx) const;
 
-    std::array<U64,nWdlVals> count; // loss, blessed loss, draw, cursed win, win
+    /** Get the i:th count. */
+    U64 getCount(int i) const { return count[i]; }
 
 private:
     /** Cost adjusted to prefer an even split when the real cost is the same. */
     double adjustedCost(bool useGini) const;
+
+    std::array<U64,nWdlVals> count; // loss, blessed loss, draw, cursed win, win
 };
 
 class WDLStatsNode : public DT::StatsNode {
@@ -92,6 +95,7 @@ public:
 
     std::unique_ptr<DT::EncoderNode> getEncoder() const override;
 
+private:
     WDLStats stats;
 };
 

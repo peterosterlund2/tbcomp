@@ -273,7 +273,7 @@ WDLEncoderNode::WDLEncoderNode(const WDLStats& stats) {
     std::array<std::pair<U64,int>,N> srt;
     const U64 maxVal = ~0ULL;
     for (int i = 0; i < N; i++)
-        srt[i] = std::make_pair(maxVal - stats.count[i], stats.count[i] ? i : -1);
+        srt[i] = std::make_pair(maxVal - stats.getCount(i), stats.getCount(i) ? i : -1);
     std::sort(srt.begin(), srt.end());
     for (int i = 0; i < N; i++)
         encTable[i] = srt[i].second;
