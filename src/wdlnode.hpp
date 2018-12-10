@@ -3,6 +3,8 @@
 
 #include "dtnode.hpp"
 #include "predicates.hpp"
+#include <cmath>
+
 
 class WDLStatsNode;
 class WDLEvalContext;
@@ -73,6 +75,12 @@ public:
     /** Get the i:th count. */
     U64 getCount(int i) const { return count[i]; }
 
+    void scaleCounts(int nChunks, int appliedChunks) {
+        if (nChunks != appliedChunks)
+            for (int i = 0; i < nWdlVals; i++)
+                count[i] = (U64)std::round((double)count[i] * nChunks / appliedChunks);
+    }
+
 private:
     /** Cost adjusted to prefer an even split when the real cost is the same. */
     double adjustedCost(bool useGini) const;
@@ -94,6 +102,11 @@ public:
                                                  const DT::EvalContext& ctx) const override;
 
     std::unique_ptr<DT::EncoderNode> getEncoder() const override;
+    std::unique_ptr<DT::EncoderNode> getEncoder(bool approximate) const;
+
+    void scaleStats(int nChunks, int appliedChunks) {
+        stats.scaleCounts(nChunks, appliedChunks);
+    }
 
 private:
     WDLStats stats;
@@ -115,7 +128,7 @@ public:
 
 class WDLStatsCollectorNode : public DT::StatsCollectorNode {
 public:
-    explicit WDLStatsCollectorNode(DT::EvalContext& ctx);
+    WDLStatsCollectorNode(DT::EvalContext& ctx, int nChunks);
 
     bool applyData(const Position& pos, int value, DT::EvalContext& ctx) override;
 
@@ -147,7 +160,7 @@ private:
 
 class WDLEncoderNode : public DT::EncoderNode {
 public:
-    WDLEncoderNode(const WDLStats& stats);
+    WDLEncoderNode(const WDLStats& stats, bool approximate);
 
     int encodeValue(const Position& pos, int value, DT::EvalContext& ctx) const override;
     std::unique_ptr<DT::StatsNode> getStats(const DT::EvalContext& ctx) const override;
@@ -218,7 +231,7 @@ public:
     explicit WDLNodeFactory(bool gini, double mergeThreshold)
     : useGiniImpurity(gini), mergeThreshold(mergeThreshold) {}
 
-    std::unique_ptr<DT::StatsCollectorNode> makeStatsCollector(DT::EvalContext& ctx) override;
+    std::unique_ptr<DT::StatsCollectorNode> makeStatsCollector(DT::EvalContext& ctx, int nChunks) override;
 
     std::unique_ptr<DT::EvalContext> makeEvalContext(const PosIndex& posIdx) override;
 

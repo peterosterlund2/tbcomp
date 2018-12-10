@@ -41,10 +41,11 @@ usage() {
     std::cerr << " idx2pos nwq nwr nwb nwn nwp  nbq nbr nbb nbn nbp  idx\n";
     std::cerr << " idxtest fen\n";
 
-    std::cerr << " wdldump [-g] [-d] [-th val] tbType [maxTreeDepth]\n";
+    std::cerr << " wdldump [-g] [-d] [-th val] [-s val] tbType [maxTreeDepth]\n";
     std::cerr << "     -g  : Use Gini impurity instead of entropy\n";
     std::cerr << "     -d  : Maximum depth of decision tree, default 10\n";
     std::cerr << "     -th : Tree node merge threshold, default 4.1\n";
+    std::cerr << "     -s  : Sample only 1 in 2^val positions\n";
 
     std::cerr << std::flush;
     ::exit(2);
@@ -261,6 +262,7 @@ main(int argc, char* argv[]) {
             bool useGini = false;
             int maxTreeDepth = 10;
             double mergeThreshold = 4.1;
+            int samplingLogFactor = 0;
             while (true) {
                 if (idx >= argc)
                     usage();
@@ -275,6 +277,11 @@ main(int argc, char* argv[]) {
                     idx++;
                     if (idx >= argc || !str2Num(argv[idx++], mergeThreshold))
                         usage();
+                } else if (argv[idx] == std::string("-s")) {
+                    idx++;
+                    if (idx >= argc || !str2Num(argv[idx++], samplingLogFactor) ||
+                            (samplingLogFactor < 0))
+                        usage();
                 } else {
                     break;
                 }
@@ -284,7 +291,7 @@ main(int argc, char* argv[]) {
             if (idx != argc)
                 usage();
 
-            WdlCompress wdlComp(tbType, useGini, mergeThreshold);
+            WdlCompress wdlComp(tbType, useGini, mergeThreshold, samplingLogFactor);
             wdlComp.wdlDump("out.bin", maxTreeDepth);
 
         } else {

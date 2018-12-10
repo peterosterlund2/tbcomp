@@ -59,8 +59,9 @@ getPieces(const std::string& tbType, std::vector<int>& pieces) {
 }
 
 WdlCompress::WdlCompress(const std::string& tbType, bool useGini,
-                         double mergeThreshold)
-    : useGini(useGini), mergeThreshold(mergeThreshold) {
+                         double mergeThreshold, int samplingLogFactor)
+    : useGini(useGini), mergeThreshold(mergeThreshold),
+      samplingLogFactor(samplingLogFactor) {
     nThreads = std::thread::hardware_concurrency();
     ComputerPlayer::initEngine();
     setupTB();
@@ -98,7 +99,7 @@ WdlCompress::wdlDump(const std::string& outFile, int maxTreeDepth) {
 
     WDLNodeFactory factory(useGini, mergeThreshold);
     WDLUncompressedData uncompData(data);
-    DecisionTree dt(factory, posIdx, uncompData, active);
+    DecisionTree dt(factory, posIdx, uncompData, active, samplingLogFactor);
     dt.computeTree(maxTreeDepth, nThreads);
 
     writeFile(data, outFile);

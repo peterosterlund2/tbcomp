@@ -121,8 +121,8 @@ WDLStatsNode::mergeWithNode(const DT::StatsNode& other, const DT::EvalContext& c
         merge = true;
 
     if (!merge) {
-        auto enc1 = getEncoder();
-        auto enc2 = otherWdl.getEncoder();
+        auto enc1 = getEncoder(false);
+        auto enc2 = otherWdl.getEncoder(false);
         const WDLEncoderNode& wdlEnc1 = static_cast<const WDLEncoderNode&>(*enc1.get());
         const WDLEncoderNode& wdlEnc2 = static_cast<const WDLEncoderNode&>(*enc2.get());
         if (wdlEnc1 == wdlEnc2) {
@@ -140,12 +140,18 @@ WDLStatsNode::mergeWithNode(const DT::StatsNode& other, const DT::EvalContext& c
 
 std::unique_ptr<DT::EncoderNode>
 WDLStatsNode::getEncoder() const {
-    return make_unique<WDLEncoderNode>(stats);
+    return make_unique<WDLEncoderNode>(stats, true);
+}
+
+std::unique_ptr<DT::EncoderNode>
+WDLStatsNode::getEncoder(bool approximate) const {
+    return make_unique<WDLEncoderNode>(stats, approximate);
 }
 
 // ------------------------------------------------------------
 
-WDLStatsCollectorNode::WDLStatsCollectorNode(DT::EvalContext& ctx) {
+WDLStatsCollectorNode::WDLStatsCollectorNode(DT::EvalContext& ctx, int nChunks)
+    : StatsCollectorNode(nChunks) {
     int nPieces = ctx.numPieces();
     for (int i = 0; i < nPieces; i++)
         if (Piece::makeWhite(ctx.getPieceType(i)) == Piece::WPAWN)
@@ -263,17 +269,39 @@ WDLStatsCollectorNode::getBest(const DT::EvalContext& ctx) const {
         p.updateBest(best, bestCost, ctx);
     for (auto& p : attacks)
         p.updateBest(best, bestCost, ctx);
+
+    // Adjust counts based on fraction of positions sampled
+    struct Visitor : public DT::Visitor {
+        Visitor(int nChunks, int appliedChunks) : nChunks(nChunks), appliedChunks(appliedChunks) {}
+        using DT::Visitor::visit;
+        void visit(DT::PredicateNode& node) {
+            node.left->accept(*this);
+            node.right->accept(*this);
+        }
+        void visit(DT::StatsNode& node) {
+            WDLStatsNode& wdlNode = static_cast<WDLStatsNode&>(node);
+            wdlNode.scaleStats(nChunks, appliedChunks);
+        }
+    private:
+        const int nChunks;
+        const int appliedChunks;
+    };
+    Visitor visitor(nChunks, appliedChunks);
+    best->accept(visitor);
+
     return best;
 }
 
 // ------------------------------------------------------------
 
-WDLEncoderNode::WDLEncoderNode(const WDLStats& stats) {
+WDLEncoderNode::WDLEncoderNode(const WDLStats& stats, bool approximate) {
     constexpr int N = WDLStats::nWdlVals;
     std::array<std::pair<U64,int>,N> srt;
     const U64 maxVal = ~0ULL;
-    for (int i = 0; i < N; i++)
-        srt[i] = std::make_pair(maxVal - stats.getCount(i), stats.getCount(i) ? i : -1);
+    for (int i = 0; i < N; i++) {
+        int encVal = (approximate || stats.getCount(i)) ? i : -1;
+        srt[i] = std::make_pair(maxVal - stats.getCount(i), encVal);
+    }
     std::sort(srt.begin(), srt.end());
     for (int i = 0; i < N; i++)
         encTable[i] = srt[i].second;
@@ -328,8 +356,8 @@ WDLEncoderNode::subSetOf(const WDLEncoderNode& other) const {
 // ------------------------------------------------------------
 
 std::unique_ptr<DT::StatsCollectorNode>
-WDLNodeFactory::makeStatsCollector(DT::EvalContext& ctx) {
-    return make_unique<WDLStatsCollectorNode>(ctx);
+WDLNodeFactory::makeStatsCollector(DT::EvalContext& ctx, int nChunks) {
+    return make_unique<WDLStatsCollectorNode>(ctx, nChunks);
 };
 
 std::unique_ptr<DT::EvalContext>

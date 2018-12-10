@@ -7,19 +7,22 @@
 #include "util/random.hpp"
 #include "util/timeUtil.hpp"
 #include "threadpool.hpp"
+#include "tbutil.hpp"
 #include <fstream>
 #include <cassert>
 
 
 DecisionTree::DecisionTree(DT::NodeFactory& nodeFactory, const PosIndex& posIdx,
-                           DT::UncompressedData& data, const BitArray& active)
+                           DT::UncompressedData& data, const BitArray& active,
+                           int samplingLogFactor)
     : nodeFactory(nodeFactory), posIdx(posIdx), data(data), active(active) {
+    nStatsChunks = 1 << samplingLogFactor;
 }
 
 void
 DecisionTree::computeTree(int maxDepth, int nThreads) {
     auto ctx = nodeFactory.makeEvalContext(posIdx);
-    root = nodeFactory.makeStatsCollector(*ctx);
+    root = nodeFactory.makeStatsCollector(*ctx, nStatsChunks);
 
     for (int lev = 0; lev < maxDepth; lev++) {
         updateStats();
@@ -70,6 +73,8 @@ DecisionTree::updateStats() {
     Visitor visitor(pos, *ctx);
 
     for (U64 idx = 0; idx < nPos; idx++) {
+        if ((hashU64(idx) & (nStatsChunks - 1)) != 0)
+            continue;
         if (!active.get(idx) || data.isHandled(idx))
             continue;
 
@@ -82,14 +87,33 @@ DecisionTree::updateStats() {
         if (!visitor.result)
             data.setHandled(idx, true);
     }
+
+    statsChunkAdded();
+}
+
+void
+DecisionTree::statsChunkAdded() {
+    struct Visitor : public DT::Visitor {
+        using DT::Visitor::visit;
+        void visit(DT::PredicateNode& node) {
+            node.left->accept(*this);
+            node.right->accept(*this);
+        }
+        void visit(DT::StatsCollectorNode& node) {
+            node.chunkAdded();
+        }
+    };
+    Visitor visitor;
+    root->accept(visitor);
 }
 
 bool
 DecisionTree::selectBestPreds(bool createNewStatsCollector) {
     struct Visitor : public DT::Visitor {
         Visitor(bool createNewStatsCollector, DT::NodeFactory& nodeFactory,
-                DT::EvalContext& ctx) :
-            createNewStatsCollector(createNewStatsCollector), nodeFactory(nodeFactory), ctx(ctx) {}
+                DT::EvalContext& ctx, int nStatsChunks) :
+            createNewStatsCollector(createNewStatsCollector), nodeFactory(nodeFactory), ctx(ctx),
+            nStatsChunks(nStatsChunks) {}
         using DT::Visitor::visit;
         void visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner) {
             node.left->accept(*this, node.left);
@@ -101,11 +125,11 @@ DecisionTree::selectBestPreds(bool createNewStatsCollector) {
                 DT::PredicateNode* predNode = dynamic_cast<DT::PredicateNode*>(owner.get());
                 if (predNode) {
                     if (predNode->left->cost(ctx) > 0) {
-                        predNode->left = nodeFactory.makeStatsCollector(ctx);
+                        predNode->left = nodeFactory.makeStatsCollector(ctx, nStatsChunks);
                         anyStatsCollectorCreated = true;
                     }
                     if (predNode->right->cost(ctx) > 0) {
-                        predNode->right = nodeFactory.makeStatsCollector(ctx);
+                        predNode->right = nodeFactory.makeStatsCollector(ctx, nStatsChunks);
                         anyStatsCollectorCreated = true;
                     }
                 }
@@ -114,10 +138,11 @@ DecisionTree::selectBestPreds(bool createNewStatsCollector) {
         const bool createNewStatsCollector;
         DT::NodeFactory& nodeFactory;
         DT::EvalContext& ctx;
+        const int nStatsChunks;
         bool anyStatsCollectorCreated = false;
     };
     auto ctx = nodeFactory.makeEvalContext(posIdx);
-    Visitor visitor(createNewStatsCollector, nodeFactory, *ctx);
+    Visitor visitor(createNewStatsCollector, nodeFactory, *ctx, nStatsChunks);
     root->accept(visitor, root);
     return visitor.anyStatsCollectorCreated;
 }

@@ -17,7 +17,8 @@ public:
      *  is set to false if the corresponding position can be handled
      *  without using a decision tree. */
     DecisionTree(DT::NodeFactory& nodeFactory, const PosIndex& posIdx,
-                 DT::UncompressedData& data, const BitArray& active);
+                 DT::UncompressedData& data, const BitArray& active,
+                 int samplingLogFactor);
 
     /** Compute decision tree having maximum depth "maxDepth",
      *  using "nThreads" threads. */
@@ -29,6 +30,9 @@ public:
 private:
     /** Update statistics for all MultiPredicate nodes. */
     void updateStats();
+
+    /** For all StatsCollectorNodes report that one chunk has been processed. */
+    void statsChunkAdded();
 
     /** For each MultiPredicate nodes, replace them with the best corresponding
      *  SinglePredicate and optionally create new MultiPredicate nodes for the
@@ -57,6 +61,7 @@ private:
     const BitArray& active;
 
     std::unique_ptr<DT::Node> root;
+    int nStatsChunks;     // Must be power of 2
 };
 
 #endif

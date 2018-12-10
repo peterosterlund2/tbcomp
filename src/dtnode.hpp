@@ -118,11 +118,15 @@ public:
  *  how successful each predicate is at reducing the cost of the data. */
 class StatsCollectorNode : public Node {
 public:
-    StatsCollectorNode() : Node(NodeType::STATSCOLLECTOR) {}
+    explicit StatsCollectorNode(int nChunks) :
+        Node(NodeType::STATSCOLLECTOR), nChunks(nChunks) {}
 
     /** Apply position value to tree, possibly by delegating to a child node.
      *  @return True if application was successful, false otherwise. */
     virtual bool applyData(const Position& pos, int value, EvalContext& ctx) = 0;
+
+    /** Called after applyData() has been called for all positions in a chunk. */
+    void chunkAdded();
 
     double cost(const DT::EvalContext& ctx) const override;
     std::unique_ptr<StatsNode> getStats(const DT::EvalContext& ctx) const override;
@@ -130,6 +134,10 @@ public:
 
     /** Create node that realizes the largest information gain. */
     virtual std::unique_ptr<Node> getBest(const DT::EvalContext& ctx) const = 0;
+
+protected:
+    const int nChunks;     // The data is partitioned in nChunks chunks
+    int appliedChunks = 0; // Number of chunks that data has been collected for
 };
 
 class EncoderNode : public Node {
@@ -145,7 +153,7 @@ public:
 
 class NodeFactory {
 public:
-    virtual std::unique_ptr<StatsCollectorNode> makeStatsCollector(EvalContext& ctx) = 0;
+    virtual std::unique_ptr<StatsCollectorNode> makeStatsCollector(EvalContext& ctx, int nChunks) = 0;
 
     virtual std::unique_ptr<EvalContext> makeEvalContext(const PosIndex& posIdx) = 0;
 };

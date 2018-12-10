@@ -53,6 +53,12 @@ PredicateNode::describe(int indentLevel, const DT::EvalContext& ctx) const {
 
 // ------------------------------------------------------------
 
+void
+StatsCollectorNode::chunkAdded() {
+    assert(appliedChunks < nChunks);
+    appliedChunks++;
+}
+
 double
 StatsCollectorNode::cost(const DT::EvalContext& ctx) const {
     return getBest(ctx)->cost(ctx);
