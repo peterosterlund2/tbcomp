@@ -81,6 +81,25 @@ double entropy(Iter beg, Iter end) {
     return entr / 8;
 }
 
+/** Compute estimated standard deviation of entropy assuming each count
+ *  in the distribution was sampled from a Poisson distribution. */
+template <typename Iter>
+double entropyError(Iter beg, Iter end) {
+    double sum = 0;
+    for (Iter it = beg; it != end; ++it) {
+        double v = *it ? *it : 1;
+        sum += v;
+    }
+    double d = 0;
+    for (Iter it = beg; it != end; ++it) {
+        double v = *it ? *it : 1;
+        double l = std::log2(v / sum);
+        d += l * l * v;
+    }
+    return sqrt(d) / 8;
+}
+
+
 /** Compute Gini impurity of a distribution. */
 template <typename Iter>
 double giniImpurity(Iter beg, Iter end) {
@@ -92,6 +111,31 @@ double giniImpurity(Iter beg, Iter end) {
     for (Iter it = beg; it != end; ++it)
         gini -= iSum * (*it) * (*it);
     return gini;
+}
+
+/** Compute estimated standard deviation of Gini impurity assuming each count
+ *  in the distribution was sampled from a Poisson distribution. */
+template <typename Iter>
+double giniImpurityError(Iter beg, Iter end) {
+    double sum = 0;
+    for (Iter it = beg; it != end; ++it) {
+        double v = *it ? *it : 1;
+        sum += v;
+    }
+
+    double sumP2 = 0;
+    for (Iter it = beg; it != end; ++it) {
+        double v = *it ? *it : 1;
+        sumP2 += (v / sum) * (v / sum);
+    }
+
+    double d = 0;
+    for (Iter it = beg; it != end; ++it) {
+        double v = *it ? *it : 1;
+        double tmp = 1 - 2*v/sum + sumP2;
+        d += tmp * tmp * v;
+    }
+    return sqrt(d);
 }
 
 

@@ -25,6 +25,7 @@ Test::runTests() {
     testRePair();
     testSwapColors();
     testThreadPool();
+    testEntropy();
 }
 
 void
@@ -461,4 +462,37 @@ Test::testThreadPool() {
     assert(!ok);
     assert(exceptionSum == 970);
     assert(resultSum == 5050 - 970);
+}
+
+static void checkEqual(double exp, double val, double tol = 1e-6) {
+    double m = std::max(exp, val);
+    double maxErr = m * tol;
+    assert(exp - maxErr <= val);
+    assert(val <= exp + maxErr);
+}
+
+void
+Test::testEntropy() {
+    {
+        std::array<U64,5> v{100, 100};
+        checkEqual(200.0/8, entropy(v.begin(), v.end()));
+        checkEqual(100.0, giniImpurity(v.begin(), v.end()));
+    }
+    {
+        std::array<U64,2> v{100, 100};
+        checkEqual(200.0/8, entropy(v.begin(), v.end()));
+        checkEqual(100.0, giniImpurity(v.begin(), v.end()));
+        checkEqual(sqrt(200)/8, entropyError(v.begin(), v.end()));
+        checkEqual(sqrt(50), giniImpurityError(v.begin(), v.end()));
+    }
+    {
+        std::array<U64,2> v{90, 10};
+        checkEqual((-90*log2(0.9) - 10*log2(0.1))/8, entropy(v.begin(), v.end()));
+        checkEqual(18.0, giniImpurity(v.begin(), v.end()));
+    }
+    {
+        std::array<U64,4> v{100, 100, 100, 100};
+        checkEqual(100.0, entropy(v.begin(), v.end()));
+        checkEqual(300.0, giniImpurity(v.begin(), v.end()));
+    }
 }
