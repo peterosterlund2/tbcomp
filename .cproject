@@ -23,8 +23,8 @@
 							<tool command="mpic++" id="cdt.managedbuild.tool.gnu.cpp.compiler.exe.debug.1466817762" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.exe.debug">
 								<option id="gnu.cpp.compiler.exe.debug.option.optimization.level.1964373959" name="Optimization Level" superClass="gnu.cpp.compiler.exe.debug.option.optimization.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.optimization.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.exe.debug.option.debugging.level.322733072" name="Debug Level" superClass="gnu.cpp.compiler.exe.debug.option.debugging.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
-								<option id="gnu.cpp.compiler.option.dialect.flags.377092731" name="Other dialect flags" superClass="gnu.cpp.compiler.option.dialect.flags" useByScannerDiscovery="true" value="-std=c++11" valueType="string"/>
-								<option id="gnu.cpp.compiler.option.other.other.1617955503" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 -std=c++11 -pthread -march=corei7 -Wno-misleading-indentation -fno-PIC" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.dialect.flags.377092731" name="Other dialect flags" superClass="gnu.cpp.compiler.option.dialect.flags" useByScannerDiscovery="true" value="" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.other.other.1617955503" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 -std=c++14 -pthread -march=corei7 -Wno-misleading-indentation -fno-PIC" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1446382857" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/texellib/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/texelutillib/src}&quot;"/>
@@ -35,6 +35,7 @@
 									<listOptionValue builtIn="false" value="HAS_POPCNT"/>
 									<listOptionValue builtIn="false" value="CLUSTER"/>
 								</option>
+								<option id="gnu.cpp.compiler.option.dialect.std.336258913" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1736274802" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.exe.debug.1383780429" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.debug">
@@ -96,8 +97,8 @@
 							<tool command="mpic++" id="cdt.managedbuild.tool.gnu.cpp.compiler.exe.release.729169487" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.exe.release">
 								<option id="gnu.cpp.compiler.exe.release.option.optimization.level.881028639" name="Optimization Level" superClass="gnu.cpp.compiler.exe.release.option.optimization.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.optimization.level.most" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.exe.release.option.debugging.level.1164317720" name="Debug Level" superClass="gnu.cpp.compiler.exe.release.option.debugging.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
-								<option id="gnu.cpp.compiler.option.dialect.flags.1390183888" name="Other dialect flags" superClass="gnu.cpp.compiler.option.dialect.flags" useByScannerDiscovery="true" value="-std=c++11" valueType="string"/>
-								<option id="gnu.cpp.compiler.option.other.other.1053216374" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 -std=c++11 -pthread -march=corei7 -Wno-misleading-indentation -fno-PIC" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.dialect.flags.1390183888" name="Other dialect flags" superClass="gnu.cpp.compiler.option.dialect.flags" useByScannerDiscovery="true" value="" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.other.other.1053216374" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 -std=c++14 -pthread -march=corei7 -Wno-misleading-indentation -fno-PIC" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.include.paths.836755646" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/texellib/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/texelutillib/src}&quot;"/>
@@ -108,6 +109,7 @@
 									<listOptionValue builtIn="false" value="HAS_POPCNT"/>
 									<listOptionValue builtIn="false" value="CLUSTER"/>
 								</option>
+								<option id="gnu.cpp.compiler.option.dialect.std.798369378" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1917582908" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.exe.release.90984843" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.release">

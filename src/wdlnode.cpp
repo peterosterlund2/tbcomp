@@ -192,42 +192,58 @@ WDLStatsCollectorNode::WDLStatsCollectorNode(DT::EvalContext& ctx, int nChunks)
                 attacks.emplace_back(p1, p2);
 }
 
+template <typename Func>
+void
+WDLStatsCollectorNode::iterateMembers(Func func) {
+    func(wtm);
+    func(inCheck);
+    func(bPairW);
+    func(bPairB);
+    func(sameB);
+    func(oppoB);
+    for (auto& p : kPawnSq)
+        func(p);
+    func(pRace);
+    func(captWdl);
+    for (auto& p : darkSquare)
+        func(p);
+    for (auto& p : fileRankW)
+        func(p);
+    for (auto& p : fileRankB)
+        func(p);
+    for (auto& p : fileDelta)
+        func(p);
+    for (auto& p : rankDelta)
+        func(p);
+    for (auto& p : fileDist)
+        func(p);
+    for (auto& p : rankDist)
+        func(p);
+    for (auto& p : kingDist)
+        func(p);
+    for (auto& p : taxiDist)
+        func(p);
+    for (auto& p : diag)
+        func(p);
+    for (auto& p : forks)
+        func(p);
+    for (auto& p : attacks)
+        func(p);
+}
+
+template <typename Func>
+void
+WDLStatsCollectorNode::iterateMembers(Func func) const {
+    decltype(func(wtm))* dummy1; (void)dummy1; // Check const
+    decltype(func(fileRankW[0]))* dummy2; (void)dummy2;
+    (const_cast<WDLStatsCollectorNode&>(*this)).iterateMembers(func);
+}
+
 bool
 WDLStatsCollectorNode::applyData(const Position& pos, int value, DT::EvalContext& ctx) {
-    wtm.applyData(pos, ctx, value);
-    inCheck.applyData(pos, ctx, value);
-    bPairW.applyData(pos, ctx, value);
-    bPairB.applyData(pos, ctx, value);
-    sameB.applyData(pos, ctx, value);
-    oppoB.applyData(pos, ctx, value);
-    for (auto& p : kPawnSq)
-        p.applyData(pos, ctx, value);
-    pRace.applyData(pos, ctx, value);
-    captWdl.applyData(pos, ctx, value);
-    for (auto& p : darkSquare)
-        p.applyData(pos, ctx, value);
-    for (auto& p : fileRankW)
-        p.applyData(pos, ctx, value);
-    for (auto& p : fileRankB)
-        p.applyData(pos, ctx, value);
-    for (auto& p : fileDelta)
-        p.applyData(pos, ctx, value);
-    for (auto& p : rankDelta)
-        p.applyData(pos, ctx, value);
-    for (auto& p : fileDist)
-        p.applyData(pos, ctx, value);
-    for (auto& p : rankDist)
-        p.applyData(pos, ctx, value);
-    for (auto& p : kingDist)
-        p.applyData(pos, ctx, value);
-    for (auto& p : taxiDist)
-        p.applyData(pos, ctx, value);
-    for (auto& p : diag)
-        p.applyData(pos, ctx, value);
-    for (auto& p : forks)
-        p.applyData(pos, ctx, value);
-    for (auto& p : attacks)
-        p.applyData(pos, ctx, value);
+    iterateMembers([&pos,value,&ctx](auto& collector) {
+        collector.applyData(pos, ctx, value);
+    });
     return true;
 }
 
@@ -235,40 +251,9 @@ std::unique_ptr<DT::Node>
 WDLStatsCollectorNode::getBest(const DT::EvalContext& ctx) const {
     std::unique_ptr<DT::Node> best;
     double bestCost = DBL_MAX;
-    wtm.updateBest(best, bestCost, ctx);
-    inCheck.updateBest(best, bestCost, ctx);
-    bPairW.updateBest(best, bestCost, ctx);
-    bPairB.updateBest(best, bestCost, ctx);
-    sameB.updateBest(best, bestCost, ctx);
-    oppoB.updateBest(best, bestCost, ctx);
-    for (auto& p : kPawnSq)
-        p.updateBest(best, bestCost, ctx);
-    pRace.updateBest(best, bestCost, ctx);
-    captWdl.updateBest(best, bestCost, ctx);
-    for (auto& p : darkSquare)
-        p.updateBest(best, bestCost, ctx);
-    for (auto& p : fileRankW)
-        p.updateBest(best, bestCost, ctx);
-    for (auto& p : fileRankB)
-        p.updateBest(best, bestCost, ctx);
-    for (auto& p : fileDelta)
-        p.updateBest(best, bestCost, ctx);
-    for (auto& p : rankDelta)
-        p.updateBest(best, bestCost, ctx);
-    for (auto& p : fileDist)
-        p.updateBest(best, bestCost, ctx);
-    for (auto& p : rankDist)
-        p.updateBest(best, bestCost, ctx);
-    for (auto& p : kingDist)
-        p.updateBest(best, bestCost, ctx);
-    for (auto& p : taxiDist)
-        p.updateBest(best, bestCost, ctx);
-    for (auto& p : diag)
-        p.updateBest(best, bestCost, ctx);
-    for (auto& p : forks)
-        p.updateBest(best, bestCost, ctx);
-    for (auto& p : attacks)
-        p.updateBest(best, bestCost, ctx);
+    iterateMembers([&](const auto& collector) {
+        collector.updateBest(best, bestCost, ctx);
+    });
 
     // Adjust counts based on fraction of positions sampled
     struct Visitor : public DT::Visitor {

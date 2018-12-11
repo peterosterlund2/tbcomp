@@ -135,6 +135,9 @@ public:
     std::unique_ptr<DT::Node> getBest(const DT::EvalContext& ctx) const override;
 
 private:
+    template <typename Func> void iterateMembers(Func func);
+    template <typename Func> void iterateMembers(Func func) const;
+
     StatsCollector<WTMPredicate, WDLStats> wtm;
     StatsCollector<InCheckPredicate, WDLStats> inCheck;
     StatsCollector<BishopPairPredicate<true>, WDLStats> bPairW;
