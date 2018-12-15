@@ -137,7 +137,7 @@ DecisionTree::selectBestPreds(bool createNewStatsCollector) {
         }
         const bool createNewStatsCollector;
         DT::NodeFactory& nodeFactory;
-        DT::EvalContext& ctx;
+        const DT::EvalContext& ctx;
         const int nStatsChunks;
         bool anyStatsCollectorCreated = false;
     };

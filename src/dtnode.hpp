@@ -67,8 +67,8 @@ public:
 
 class EvalContext {
 public:
-    EvalContext(const PosIndex& posIdx) : posIdx(posIdx) {}
-    ~EvalContext() = default;
+    explicit EvalContext(const PosIndex& posIdx) : posIdx(posIdx) {}
+    virtual ~EvalContext() = default;
 
     virtual void init(const Position& pos, const UncompressedData& data, U64 idx) = 0;
 
@@ -153,7 +153,7 @@ public:
 
 class NodeFactory {
 public:
-    virtual std::unique_ptr<StatsCollectorNode> makeStatsCollector(EvalContext& ctx, int nChunks) = 0;
+    virtual std::unique_ptr<StatsCollectorNode> makeStatsCollector(const EvalContext& ctx, int nChunks) = 0;
 
     virtual std::unique_ptr<EvalContext> makeEvalContext(const PosIndex& posIdx) = 0;
 };

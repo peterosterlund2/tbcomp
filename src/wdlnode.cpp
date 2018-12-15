@@ -150,7 +150,7 @@ WDLStatsNode::getEncoder(bool approximate) const {
 
 // ------------------------------------------------------------
 
-WDLStatsCollectorNode::WDLStatsCollectorNode(DT::EvalContext& ctx, int nChunks)
+WDLStatsCollectorNode::WDLStatsCollectorNode(const DT::EvalContext& ctx, int nChunks)
     : StatsCollectorNode(nChunks) {
     int nPieces = ctx.numPieces();
     for (int i = 0; i < nPieces; i++)
@@ -341,7 +341,7 @@ WDLEncoderNode::subSetOf(const WDLEncoderNode& other) const {
 // ------------------------------------------------------------
 
 std::unique_ptr<DT::StatsCollectorNode>
-WDLNodeFactory::makeStatsCollector(DT::EvalContext& ctx, int nChunks) {
+WDLNodeFactory::makeStatsCollector(const DT::EvalContext& ctx, int nChunks) {
     return make_unique<WDLStatsCollectorNode>(ctx, nChunks);
 };
 

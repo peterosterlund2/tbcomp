@@ -128,7 +128,7 @@ public:
 
 class WDLStatsCollectorNode : public DT::StatsCollectorNode {
 public:
-    WDLStatsCollectorNode(DT::EvalContext& ctx, int nChunks);
+    WDLStatsCollectorNode(const DT::EvalContext& ctx, int nChunks);
 
     bool applyData(const Position& pos, int value, DT::EvalContext& ctx) override;
 
@@ -234,7 +234,8 @@ public:
     explicit WDLNodeFactory(bool gini, double mergeThreshold)
     : useGiniImpurity(gini), mergeThreshold(mergeThreshold) {}
 
-    std::unique_ptr<DT::StatsCollectorNode> makeStatsCollector(DT::EvalContext& ctx, int nChunks) override;
+    std::unique_ptr<DT::StatsCollectorNode> makeStatsCollector(const DT::EvalContext& ctx,
+                                                               int nChunks) override;
 
     std::unique_ptr<DT::EvalContext> makeEvalContext(const PosIndex& posIdx) override;
 
