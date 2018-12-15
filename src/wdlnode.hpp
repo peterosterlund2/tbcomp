@@ -136,11 +136,14 @@ public:
 
     std::unique_ptr<DT::Node> getBest(const DT::EvalContext& ctx) const override;
 
-    double costError(const DT::EvalContext& ctx) const override;
+    std::unique_ptr<DT::Node> getBestReplacement(const DT::EvalContext& ctx) const override;
 
 private:
     template <typename Func> void iterateMembers(Func func);
     template <typename Func> void iterateMembers(Func func) const;
+
+    /** Adjust counts based on fraction of positions sampled. */
+    void reScale(std::unique_ptr<DT::Node>& node) const;
 
     StatsCollector<WTMPredicate, WDLStats> wtm;
     StatsCollector<InCheckPredicate, WDLStats> inCheck;

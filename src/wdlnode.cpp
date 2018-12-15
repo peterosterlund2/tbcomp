@@ -270,7 +270,12 @@ WDLStatsCollectorNode::getBest(const DT::EvalContext& ctx) const {
         collector.updateBest(best, bestCost, ctx);
     });
 
-    // Adjust counts based on fraction of positions sampled
+    reScale(best);
+    return best;
+}
+
+void
+WDLStatsCollectorNode::reScale(std::unique_ptr<DT::Node>& node) const {
     struct Visitor : public DT::Visitor {
         Visitor(int nChunks, int appliedChunks) : nChunks(nChunks), appliedChunks(appliedChunks) {}
         using DT::Visitor::visit;
@@ -287,40 +292,52 @@ WDLStatsCollectorNode::getBest(const DT::EvalContext& ctx) const {
         const int appliedChunks;
     };
     Visitor visitor(nChunks, appliedChunks);
-    best->accept(visitor);
-
-    return best;
+    node->accept(visitor);
 }
 
-double
-WDLStatsCollectorNode::costError(const DT::EvalContext& ctx) const {
-    std::unique_ptr<DT::Node> best;
-    double bestCost = DBL_MAX;
+std::unique_ptr<DT::Node>
+WDLStatsCollectorNode::getBestReplacement(const DT::EvalContext& ctx) const {
+    std::unique_ptr<DT::Node> best, secondBest;
+    double bestCost = DBL_MAX, secondBestCost = DBL_MAX;
     iterateMembers([&](const auto& collector) {
-        collector.updateBest(best, bestCost, ctx);
+        collector.updateBest2(best, bestCost, secondBest, secondBestCost, ctx);
     });
 
-    struct Visitor : public DT::Visitor {
-        Visitor(const DT::EvalContext& ctx) : ctx(ctx) {}
-        using DT::Visitor::visit;
-        void visit(DT::PredicateNode& node) {
-            node.left->accept(*this);
-            node.right->accept(*this);
-        }
-        void visit(DT::StatsNode& node) {
-            WDLStatsNode& wdlNode = static_cast<WDLStatsNode&>(node);
-            double err = wdlNode.costError(ctx);
-            err2 += err * err;
-        }
-        const DT::EvalContext& ctx;
-        double err2 = 0;
-    };
-    Visitor visitor(ctx);
-    best->accept(visitor);
+    auto getErr = [this,&ctx](DT::Node& node) -> double {
+        struct Visitor : public DT::Visitor {
+            Visitor(const DT::EvalContext& ctx) : ctx(ctx) {}
+            using DT::Visitor::visit;
+            void visit(DT::PredicateNode& node) {
+                node.left->accept(*this);
+                node.right->accept(*this);
+            }
+            void visit(DT::StatsNode& node) {
+                WDLStatsNode& wdlNode = static_cast<WDLStatsNode&>(node);
+                double err = wdlNode.costError(ctx);
+                err2 += err * err;
+            }
+            const DT::EvalContext& ctx;
+            double err2 = 0;
+        };
+        Visitor visitor(ctx);
+        node.accept(visitor);
 
-    double N = nChunks;
-    double n = appliedChunks;
-    return sqrt(visitor.err2 * (N - n) / N);
+        double N = nChunks;
+        double n = appliedChunks;
+        return sqrt(visitor.err2 * (N - n) / N);
+    };
+
+    double bestErr = getErr(*best.get());
+    double secondBestErr = getErr(*secondBest.get());
+
+    double sumErr = sqrt(bestErr * bestErr + secondBestErr * secondBestErr);
+    double margin = bestCost * 1e-3;
+
+    if (secondBestCost - sumErr * 3 < bestCost - margin)
+        return nullptr;
+
+    reScale(best);
+    return best;
 }
 
 // ------------------------------------------------------------

@@ -131,16 +131,15 @@ public:
 
     double cost(const DT::EvalContext& ctx) const override;
 
-    /** Estimated standard deviation in the value returned by cost. */
-    virtual double costError(const DT::EvalContext& ctx) const = 0;
-
     std::unique_ptr<StatsNode> getStats(const DT::EvalContext& ctx) const override;
     std::string describe(int indentLevel, const DT::EvalContext& ctx) const override;
 
     /** Create node that realizes the largest information gain. */
     virtual std::unique_ptr<Node> getBest(const DT::EvalContext& ctx) const = 0;
 
-    double sampleFraction() const { return appliedChunks / (double)nChunks; }
+    /** Like getBest(), but only returns non-null if the probability to return
+     *  a node that is substantially worse than optimal is small enough. */
+    virtual std::unique_ptr<Node> getBestReplacement(const DT::EvalContext& ctx) const = 0;
 
 protected:
     const int nChunks;     // The data is partitioned in nChunks chunks

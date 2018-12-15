@@ -216,6 +216,21 @@ public:
         if (Stats::better(best.get(), bestCost, stats[0], stats[1], ctx))
             best = Stats::makeNode(pred, stats[0], stats[1]);
     }
+
+    /** Like updateBest but also keeps track of second best predicate. */
+    void updateBest2(std::unique_ptr<DT::Node>& best, double& bestCost,
+                     std::unique_ptr<DT::Node>& secondBest, double& secondBestCost,
+                     const DT::EvalContext& ctx) const {
+        double oldBestCost = bestCost;
+        if (Stats::better(best.get(), bestCost, stats[0], stats[1], ctx)) {
+            secondBest = std::move(best);
+            secondBestCost = oldBestCost;
+            best = Stats::makeNode(pred, stats[0], stats[1]);
+        } else if (Stats::better(secondBest.get(), secondBestCost, stats[0], stats[1], ctx)) {
+            secondBest = Stats::makeNode(pred, stats[0], stats[1]);
+        }
+    }
+
 private:
     Pred pred;
     Stats stats[2];
@@ -360,6 +375,31 @@ public:
                                        statsFalse, statsTrue);
         }
     }
+
+    void updateBest2(std::unique_ptr<DT::Node>& best, double& bestCost,
+                     std::unique_ptr<DT::Node>& secondBest, double& secondBestCost,
+                     const DT::EvalContext& ctx) const {
+        const int N = maxVal - minVal + 1;
+        Stats statsTrue, statsFalse;
+        for (int i = 0; i < N; i++)
+            statsFalse.addStats(stats[i]);
+        for (int i = 0; i < N-1; i++) {
+            statsTrue.addStats(stats[i]);
+            statsFalse.subStats(stats[i]);
+
+            double oldBestCost = bestCost;
+            if (Stats::better(best.get(), bestCost, statsFalse, statsTrue, ctx)) {
+                secondBest = std::move(best);
+                secondBestCost = oldBestCost;
+                best = Stats::makeNode(MultiPredBound<MultiPred>(pred, minVal + i),
+                                       statsFalse, statsTrue);
+            } else if (Stats::better(secondBest.get(), secondBestCost, statsFalse, statsTrue, ctx)) {
+                secondBest = Stats::makeNode(MultiPredBound<MultiPred>(pred, minVal + i),
+                                             statsFalse, statsTrue);
+            }
+        }
+    }
+
 private:
     MultiPred pred;
     Stats stats[maxVal - minVal + 1];
