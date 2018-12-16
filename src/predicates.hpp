@@ -8,6 +8,7 @@
 #include <array>
 
 
+/** Predicate is true if is white's turn to move. */
 class WTMPredicate : public Predicate {
 public:
     bool eval(const Position& pos, DT::EvalContext& ctx) const override {
@@ -18,6 +19,7 @@ public:
     }
 };
 
+/** Predicate is true if the side to move is in check. */
 class InCheckPredicate : public Predicate {
 public:
     bool eval(const Position& pos, DT::EvalContext& ctx) const override {
@@ -28,6 +30,7 @@ public:
     }
 };
 
+/** Predicate is true if white/black has a bishop pair. */
 template <bool white>
 class BishopPairPredicate : public Predicate {
 public:
@@ -63,6 +66,7 @@ public:
     }
 };
 
+/** Predicate is true if a given piece is on a dark square. */
 class DarkSquarePredicate : public Predicate {
 public:
     explicit DarkSquarePredicate(int pieceNo) : pieceNo(pieceNo) {}
@@ -78,9 +82,9 @@ private:
 };
 
 /** Predicate is true if opponent king is within "the square" of a pawn. */
-class KingPawnSquarePredicate : public Predicate {
+class KingInPawnSquarePredicate : public Predicate {
 public:
-    explicit KingPawnSquarePredicate(int pieceNo) : pieceNo(pieceNo) {}
+    explicit KingInPawnSquarePredicate(int pieceNo) : pieceNo(pieceNo) {}
     bool eval(const Position& pos, DT::EvalContext& ctx) const override {
         int pSq = ctx.getPieceSquare(pieceNo, pos);
         int x = Square::getX(pSq);
@@ -150,9 +154,9 @@ private:
 };
 
 /** Predicate true if piece p1 and piece p2 on the same diagonal. */
-class DiagonalPredicate : public Predicate {
+class SameDiagPredicate : public Predicate {
 public:
-    DiagonalPredicate(int p1, int p2) : p1(p1), p2(p2) {}
+    SameDiagPredicate(int p1, int p2) : p1(p1), p2(p2) {}
     bool eval(const Position& pos, DT::EvalContext& ctx) const override {
         int sq1 = ctx.getPieceSquare(p1, pos);
         int sq2 = ctx.getPieceSquare(p2, pos);

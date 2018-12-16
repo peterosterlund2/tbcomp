@@ -159,9 +159,9 @@ WDLStatsCollectorNode::WDLStatsCollectorNode(const DT::EvalContext& ctx, int nCh
     for (int i = 0; i < nPieces; i++)
         darkSquare.emplace_back(i);
     for (int i = 0; i < nPieces; i++)
-        fileRankW.emplace_back(i);
+        fileRankF.emplace_back(i);
     for (int i = 0; i < nPieces; i++)
-        fileRankB.emplace_back(i);
+        fileRankR.emplace_back(i);
     for (int p1 = 0; p1 < nPieces; p1++) {
         for (int p2 = p1+1; p2 < nPieces; p2++) {
             fileDelta.emplace_back(p1, p2);
@@ -207,9 +207,9 @@ WDLStatsCollectorNode::iterateMembers(Func func) {
     func(captWdl);
     for (auto& p : darkSquare)
         func(p);
-    for (auto& p : fileRankW)
+    for (auto& p : fileRankF)
         func(p);
-    for (auto& p : fileRankB)
+    for (auto& p : fileRankR)
         func(p);
     for (auto& p : fileDelta)
         func(p);
@@ -235,7 +235,7 @@ template <typename Func>
 void
 WDLStatsCollectorNode::iterateMembers(Func func) const {
     decltype(func(wtm))* dummy1; (void)dummy1; // Check const
-    decltype(func(fileRankW[0]))* dummy2; (void)dummy2;
+    decltype(func(fileRankF[0]))* dummy2; (void)dummy2;
     (const_cast<WDLStatsCollectorNode&>(*this)).iterateMembers(func);
 }
 
