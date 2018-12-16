@@ -71,6 +71,7 @@ public:
     virtual ~EvalContext() = default;
 
     virtual void init(const Position& pos, const UncompressedData& data, U64 idx) = 0;
+    virtual double getMergeThreshold() const = 0;
 
     int numPieces() const;
     Piece::Type getPieceType(int pieceNo) const;

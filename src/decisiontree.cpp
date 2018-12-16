@@ -124,11 +124,11 @@ DecisionTree::selectBestPreds(bool createNewStatsCollector) {
             if (createNewStatsCollector) {
                 DT::PredicateNode* predNode = dynamic_cast<DT::PredicateNode*>(owner.get());
                 if (predNode) {
-                    if (predNode->left->cost(ctx) > 0) {
+                    if (predNode->left->cost(ctx) > ctx.getMergeThreshold()) {
                         predNode->left = nodeFactory.makeStatsCollector(ctx, nStatsChunks);
                         anyStatsCollectorCreated = true;
                     }
-                    if (predNode->right->cost(ctx) > 0) {
+                    if (predNode->right->cost(ctx) > ctx.getMergeThreshold()) {
                         predNode->right = nodeFactory.makeStatsCollector(ctx, nStatsChunks);
                         anyStatsCollectorCreated = true;
                     }

@@ -254,7 +254,7 @@ public:
     int getCaptureWdl() const { return captWdl; }
 
     bool useGini() const { return gini; }
-    double getMergeThreshold() const { return mergeThreshold; }
+    double getMergeThreshold() const override { return mergeThreshold; }
 
 private:
     int captWdl = 0;
