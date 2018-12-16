@@ -331,9 +331,9 @@ WDLStatsCollectorNode::getBestReplacement(const DT::EvalContext& ctx) const {
     double secondBestErr = getErr(*secondBest.get());
 
     double sumErr = sqrt(bestErr * bestErr + secondBestErr * secondBestErr);
-    double margin = bestCost * 1e-3;
+    double margin = bestCost * 2e-2;
 
-    if (secondBestCost - sumErr * 3 < bestCost - margin)
+    if (secondBestCost - sumErr * 2.0 < bestCost - margin)
         return nullptr;
 
     reScale(best);
