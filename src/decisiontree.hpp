@@ -29,16 +29,15 @@ public:
 
 private:
     /** Update statistics for all MultiPredicate nodes. */
-    void updateStats();
+    void updateStats(unsigned int chunkNo);
 
     /** For all StatsCollectorNodes report that one chunk has been processed. */
     void statsChunkAdded();
 
-    /** For each MultiPredicate nodes, replace them with the best corresponding
-     *  SinglePredicate and optionally create new MultiPredicate nodes for the
-     *  left/right children.
-     *  @return True if an MultiPredicate was created. */
-    bool selectBestPreds(bool createNewStatsCollector);
+    /** For each StatsCollectorNode, if it is accurate enough, replace it with
+     *  a tree consisting of the best predicate and two new StatsCollectorNodes.
+     *  @return True if there are still StatsCollectorNodes in the tree. */
+    bool selectBestPreds(int maxDepth);
 
     /** Merge nodes if they are equivalent or if the cost change is small enough. */
     void simplifyTree();

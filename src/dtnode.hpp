@@ -130,11 +130,17 @@ public:
     void chunkAdded();
 
     double cost(const DT::EvalContext& ctx) const override;
+
+    /** Estimated standard deviation in the value returned by cost. */
+    virtual double costError(const DT::EvalContext& ctx) const = 0;
+
     std::unique_ptr<StatsNode> getStats(const DT::EvalContext& ctx) const override;
     std::string describe(int indentLevel, const DT::EvalContext& ctx) const override;
 
     /** Create node that realizes the largest information gain. */
     virtual std::unique_ptr<Node> getBest(const DT::EvalContext& ctx) const = 0;
+
+    double sampleFraction() const { return appliedChunks / (double)nChunks; }
 
 protected:
     const int nChunks;     // The data is partitioned in nChunks chunks

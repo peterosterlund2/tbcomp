@@ -30,6 +30,15 @@ WDLStats::cost(bool useGini) const {
 }
 
 double
+WDLStats::costError(bool useGini) const {
+    if (useGini) {
+        return ::giniImpurityError(count.begin(), count.end());
+    } else {
+        return ::entropyError(count.begin(), count.end());
+    }
+}
+
+double
 WDLStats::adjustedCost(bool useGini) const {
     U64 sum = std::accumulate(count.begin(), count.end(), (U64)0);
     int bits = (sum >= (1ULL<<32)) ? floorLog2((U32)(sum >> 32)) + 32 : floorLog2((U32)sum);
@@ -83,6 +92,12 @@ double
 WDLStatsNode::cost(const DT::EvalContext& ctx) const {
     bool useGini = static_cast<const WDLEvalContext&>(ctx).useGini();
     return stats.cost(useGini);
+}
+
+double
+WDLStatsNode::costError(const DT::EvalContext& ctx) const {
+    bool useGini = static_cast<const WDLEvalContext&>(ctx).useGini();
+    return stats.costError(useGini);
 }
 
 std::unique_ptr<DT::StatsNode>
@@ -275,6 +290,37 @@ WDLStatsCollectorNode::getBest(const DT::EvalContext& ctx) const {
     best->accept(visitor);
 
     return best;
+}
+
+double
+WDLStatsCollectorNode::costError(const DT::EvalContext& ctx) const {
+    std::unique_ptr<DT::Node> best;
+    double bestCost = DBL_MAX;
+    iterateMembers([&](const auto& collector) {
+        collector.updateBest(best, bestCost, ctx);
+    });
+
+    struct Visitor : public DT::Visitor {
+        Visitor(const DT::EvalContext& ctx) : ctx(ctx) {}
+        using DT::Visitor::visit;
+        void visit(DT::PredicateNode& node) {
+            node.left->accept(*this);
+            node.right->accept(*this);
+        }
+        void visit(DT::StatsNode& node) {
+            WDLStatsNode& wdlNode = static_cast<WDLStatsNode&>(node);
+            double err = wdlNode.costError(ctx);
+            err2 += err * err;
+        }
+        const DT::EvalContext& ctx;
+        double err2 = 0;
+    };
+    Visitor visitor(ctx);
+    best->accept(visitor);
+
+    double N = nChunks;
+    double n = appliedChunks;
+    return sqrt(visitor.err2 * (N - n) / N);
 }
 
 // ------------------------------------------------------------

@@ -271,7 +271,8 @@ main(int argc, char* argv[]) {
                     idx++;
                 } else if (argv[idx] == std::string("-d")) {
                     idx++;
-                    if (idx >= argc || !str2Num(argv[idx++], maxTreeDepth))
+                    if (idx >= argc || !str2Num(argv[idx++], maxTreeDepth) ||
+                            (maxTreeDepth < 1))
                         usage();
                 } else if (argv[idx] == std::string("-th")) {
                     idx++;

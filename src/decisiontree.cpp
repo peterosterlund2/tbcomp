@@ -25,13 +25,14 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
     root = nodeFactory.makeStatsCollector(*ctx, nStatsChunks);
 
     S64 t0 = currentTimeMillis();
-    for (int lev = 0; lev < maxDepth; lev++) {
-        updateStats();
-        std::cout << "lev:" << lev << " cost:" << root->cost(*ctx)
-                  << " numLeafs:" << getNumLeafNodes() << std::endl;
+    int chunkNo = 0;
+    for (int iter = 0; ; iter++) {
+        updateStats(chunkNo);
+        chunkNo = (chunkNo + 1) & (nStatsChunks - 1);
 
-        bool finished = !selectBestPreds(lev + 1 < maxDepth);
-        if (finished)
+        std::cout << "iter:" << iter << " cost:" << root->cost(*ctx) << std::endl;
+
+        if (!selectBestPreds(maxDepth))
             break;
     }
     S64 t1 = currentTimeMillis();
@@ -49,7 +50,7 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
 }
 
 void
-DecisionTree::updateStats() {
+DecisionTree::updateStats(unsigned int chunkNo) {
     U64 nPos = posIdx.tbSize();
     Position pos;
     auto ctx = nodeFactory.makeEvalContext(posIdx);
@@ -76,7 +77,7 @@ DecisionTree::updateStats() {
     Visitor visitor(pos, *ctx);
 
     for (U64 idx = 0; idx < nPos; idx++) {
-        if ((hashU64(idx) & (nStatsChunks - 1)) != 0)
+        if ((hashU64(idx) & (nStatsChunks - 1)) != chunkNo)
             continue;
         if (!active.get(idx) || data.isHandled(idx))
             continue;
@@ -111,43 +112,63 @@ DecisionTree::statsChunkAdded() {
 }
 
 bool
-DecisionTree::selectBestPreds(bool createNewStatsCollector) {
+DecisionTree::selectBestPreds(int maxDepth) {
     struct Visitor : public DT::Visitor {
-        Visitor(bool createNewStatsCollector, DT::NodeFactory& nodeFactory,
-                DT::EvalContext& ctx, int nStatsChunks) :
-            createNewStatsCollector(createNewStatsCollector), nodeFactory(nodeFactory), ctx(ctx),
-            nStatsChunks(nStatsChunks) {}
+        Visitor(DT::NodeFactory& nodeFactory, DT::EvalContext& ctx, int nStatsChunks, int maxDepth) :
+            nodeFactory(nodeFactory), ctx(ctx), nStatsChunks(nStatsChunks), maxDepth(maxDepth) {}
         using DT::Visitor::visit;
-        void visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner) {
-            node.left->accept(*this, node.left);
-            node.right->accept(*this, node.right);
+        void visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner, int level) {
+            depth = std::max(depth, level + 1);
+            node.left->accept(*this, node.left, level + 1);
+            node.right->accept(*this, node.right, level + 1);
         }
-        void visit(DT::StatsCollectorNode& node, std::unique_ptr<DT::Node>& owner) {
-            owner = node.getBest(ctx);
-            if (createNewStatsCollector) {
+        void visit(DT::StatsCollectorNode& node, std::unique_ptr<DT::Node>& owner, int level) {
+            depth = std::max(depth, level + 1);
+            {
+                std::unique_ptr<DT::Node> repl = node.getBest(ctx);
+                double cost = repl->cost(ctx);
+                double costErr = node.costError(ctx) / node.sampleFraction();
+                if (costErr > cost * 1e-3) {
+                    nStatsCollectors++;
+                    return;
+                }
+//                std::cout << "cost:" << cost << " costErr:" << costErr << " rel" << (costErr / cost) << std::endl;
+                owner = std::move(repl);
+                treeModified = true;
+            }
+
+            if (level + 1 < maxDepth) {
                 DT::PredicateNode* predNode = dynamic_cast<DT::PredicateNode*>(owner.get());
                 if (predNode) {
                     if (predNode->left->cost(ctx) > ctx.getMergeThreshold()) {
                         predNode->left = nodeFactory.makeStatsCollector(ctx, nStatsChunks);
-                        anyStatsCollectorCreated = true;
+                        nStatsCollectors++;
                     }
                     if (predNode->right->cost(ctx) > ctx.getMergeThreshold()) {
                         predNode->right = nodeFactory.makeStatsCollector(ctx, nStatsChunks);
-                        anyStatsCollectorCreated = true;
+                        nStatsCollectors++;
                     }
                 }
             }
         }
-        const bool createNewStatsCollector;
         DT::NodeFactory& nodeFactory;
         const DT::EvalContext& ctx;
         const int nStatsChunks;
-        bool anyStatsCollectorCreated = false;
+        const int maxDepth;
+        bool treeModified = false;
+        int nStatsCollectors = 0;
+        int depth = 0;
     };
     auto ctx = nodeFactory.makeEvalContext(posIdx);
-    Visitor visitor(createNewStatsCollector, nodeFactory, *ctx, nStatsChunks);
-    root->accept(visitor, root);
-    return visitor.anyStatsCollectorCreated;
+    Visitor visitor(nodeFactory, *ctx, nStatsChunks, maxDepth);
+    root->accept(visitor, root, 0);
+
+    if (visitor.treeModified) {
+        std::cout << "  numLeafs:" << getNumLeafNodes() << " depth:" << visitor.depth
+                << " nStats:" << visitor.nStatsCollectors << std::endl;
+    }
+
+    return visitor.nStatsCollectors > 0;
 }
 
 void
@@ -194,7 +215,6 @@ DecisionTree::makeEncoderTree() {
 int
 DecisionTree::getNumLeafNodes() {
     struct Visitor {
-        explicit Visitor(const DT::EvalContext& ctx) : ctx(ctx) {}
         void visit(DT::PredicateNode& node) {
             node.left->accept(*this);
             node.right->accept(*this);
@@ -203,17 +223,14 @@ DecisionTree::getNumLeafNodes() {
             nLeafs++;
         }
         void visit(DT::StatsCollectorNode& node) {
-            node.getBest(ctx)->accept(*this);
+            nLeafs++;
         }
         void visit(DT::EncoderNode& node) {
             nLeafs++;
         }
         int nLeafs = 0;
-    private:
-        const DT::EvalContext& ctx;
     };
-    auto ctx = nodeFactory.makeEvalContext(posIdx);
-    Visitor visitor(*ctx);
+    Visitor visitor;
     root->accept(visitor);
     return visitor.nLeafs;
 }

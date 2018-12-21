@@ -68,6 +68,7 @@ public:
 
     /** Return cost. (entropy or Gini impurity). */
     double cost(bool useGini) const;
+    double costError(bool useGini) const;
 
     /** String representation of data, for debugging. */
     std::string describe(const DT::EvalContext& ctx) const;
@@ -93,6 +94,7 @@ public:
     explicit WDLStatsNode(const WDLStats& stats) : stats(stats) {}
 
     double cost(const DT::EvalContext& ctx) const override;
+    double costError(const DT::EvalContext& ctx) const;
     std::unique_ptr<DT::StatsNode> getStats(const DT::EvalContext& ctx) const override;
     std::string describe(int indentLevel, const DT::EvalContext& ctx) const override;
 
@@ -133,6 +135,8 @@ public:
     bool applyData(const Position& pos, int value, DT::EvalContext& ctx) override;
 
     std::unique_ptr<DT::Node> getBest(const DT::EvalContext& ctx) const override;
+
+    double costError(const DT::EvalContext& ctx) const override;
 
 private:
     template <typename Func> void iterateMembers(Func func);
