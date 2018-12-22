@@ -165,8 +165,9 @@ WDLStatsNode::getEncoder(bool approximate) const {
 
 // ------------------------------------------------------------
 
-WDLStatsCollectorNode::WDLStatsCollectorNode(const DT::EvalContext& ctx, int nChunks)
-    : StatsCollectorNode(nChunks) {
+WDLStatsCollectorNode::WDLStatsCollectorNode(const DT::EvalContext& ctx, int nChunks,
+                                             double priorCost)
+    : StatsCollectorNode(nChunks, priorCost) {
     int nPieces = ctx.numPieces();
     for (int i = 0; i < nPieces; i++)
         if (Piece::makeWhite(ctx.getPieceType(i)) == Piece::WPAWN)
@@ -404,8 +405,9 @@ WDLEncoderNode::subSetOf(const WDLEncoderNode& other) const {
 // ------------------------------------------------------------
 
 std::unique_ptr<DT::StatsCollectorNode>
-WDLNodeFactory::makeStatsCollector(const DT::EvalContext& ctx, int nChunks) {
-    return make_unique<WDLStatsCollectorNode>(ctx, nChunks);
+WDLNodeFactory::makeStatsCollector(const DT::EvalContext& ctx, int nChunks,
+                                   double priorCost) {
+    return make_unique<WDLStatsCollectorNode>(ctx, nChunks, priorCost);
 };
 
 std::unique_ptr<DT::EvalContext>

@@ -84,7 +84,7 @@ WdlCompress::WdlCompress(const std::string& tbType, bool useGini,
 }
 
 void
-WdlCompress::wdlDump(const std::string& outFile, int maxTreeDepth) {
+WdlCompress::wdlDump(const std::string& outFile, int maxTreeDepth, int maxCollectorNodes) {
     PosIndex& posIdx = *posIndex;
     const U64 size = posIdx.tbSize();
     std::vector<WDLInfo> data(size);
@@ -100,7 +100,7 @@ WdlCompress::wdlDump(const std::string& outFile, int maxTreeDepth) {
     WDLNodeFactory factory(useGini, mergeThreshold);
     WDLUncompressedData uncompData(data);
     DecisionTree dt(factory, posIdx, uncompData, active, samplingLogFactor);
-    dt.computeTree(maxTreeDepth, nThreads);
+    dt.computeTree(maxTreeDepth, maxCollectorNodes, nThreads);
 
     writeFile(data, outFile);
 }

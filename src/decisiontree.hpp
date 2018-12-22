@@ -21,8 +21,9 @@ public:
                  int samplingLogFactor);
 
     /** Compute decision tree having maximum depth "maxDepth",
-     *  using "nThreads" threads. */
-    void computeTree(int maxDepth, int nThreads);
+     *  using "nThreads" threads. At most "maxCollectorNodes"
+     *  stats collector nodes are allowed in the tree. */
+    void computeTree(int maxDepth, int maxCollectorNodes, int nThreads);
 
     /** Create serialized bytecode representation of the tree. */
     void serialize(std::vector<U8>& out);
@@ -37,7 +38,7 @@ private:
     /** For each StatsCollectorNode, if it is accurate enough, replace it with
      *  a tree consisting of the best predicate and two new StatsCollectorNodes.
      *  @return True if there are still StatsCollectorNodes in the tree. */
-    bool selectBestPreds(int maxDepth);
+    bool selectBestPreds(int maxDepth, int maxCollectorNodes, double& costThreshold);
 
     /** Merge nodes if they are equivalent or if the cost change is small enough. */
     void simplifyTree();

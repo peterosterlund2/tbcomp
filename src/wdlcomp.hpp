@@ -16,7 +16,7 @@ public:
     WdlCompress(const std::string& tbType, bool useGini, double mergeThreshold,
                 int samplingLogFactor);
 
-    void wdlDump(const std::string& outFile, int maxTreeDepth);
+    void wdlDump(const std::string& outFile, int maxTreeDepth, int maxCollectorNodes);
 
 private:
     void initializeData(std::vector<WDLInfo>& data);
