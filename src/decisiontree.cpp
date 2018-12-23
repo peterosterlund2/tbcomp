@@ -24,6 +24,7 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
     auto ctx = nodeFactory.makeEvalContext(posIdx);
     root = nodeFactory.makeStatsCollector(*ctx, nStatsChunks);
 
+    S64 t0 = currentTimeMillis();
     for (int lev = 0; lev < maxDepth; lev++) {
         updateStats();
         std::cout << "lev:" << lev << " cost:" << root->cost(*ctx)
@@ -33,6 +34,7 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
         if (finished)
             break;
     }
+    S64 t1 = currentTimeMillis();
 
     simplifyTree();
     double cost = root->cost(*ctx);
@@ -41,6 +43,7 @@ DecisionTree::computeTree(int maxDepth, int nThreads) {
     makeEncoderTree();
     std::cout << '\n' << root->describe(0, *ctx) << "cost:" << cost
               << " numLeafs:" << getNumLeafNodes() << std::endl;
+    std::cout << "time:" << (t1 -t0) * 1e-3 << std::endl;
 
     encodeValues(nThreads);
 }
