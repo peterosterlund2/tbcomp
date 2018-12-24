@@ -6,6 +6,7 @@
 #include "textio.hpp"
 #include "posindex.hpp"
 #include "threadpool.hpp"
+#include "permutator.hpp"
 #include <utility>
 #include <algorithm>
 #include <iostream>
@@ -26,6 +27,7 @@ Test::runTests() {
     testSwapColors();
     testThreadPool();
     testEntropy();
+    testPermutator();
 }
 
 void
@@ -494,5 +496,41 @@ Test::testEntropy() {
         std::array<U64,4> v{100, 100, 100, 100};
         checkEqual(100.0, entropy(v.begin(), v.end()));
         checkEqual(300.0, giniImpurity(v.begin(), v.end()));
+    }
+}
+
+void
+Test::testPermutator() {
+    for (U64 N = 1; N <= 1025; N++) {
+        Permutator perm(N);
+        const U64 maxIdx = perm.maxIdx();
+        std::vector<int> cnt(N);
+        for (U64 i = 0; i < maxIdx; i++) {
+            U64 p = perm.permute(i);
+            if (i >= maxIdx)
+                break;
+            assert(p < N);
+            cnt[p]++;
+        }
+        for (U64 i = 0; i < N; i++)
+            assert(cnt[i] == 1);
+    }
+
+    {
+        std::vector<U64> sizes { 2048, 1000000, 10000000, (1<<25) - 1, (1<<25), (1<<25)+1 };
+        for (U64 N : sizes) {
+            Permutator perm(N);
+            const U64 maxIdx = perm.maxIdx();
+            std::vector<int> cnt(N);
+            for (U64 i = 0; i < maxIdx; i++) {
+                U64 p = perm.permute(i);
+                if (i >= maxIdx)
+                    break;
+                assert(p < N);
+                cnt[p]++;
+            }
+            for (U64 i = 0; i < N; i++)
+                assert(cnt[i] == 1);
+        }
     }
 }

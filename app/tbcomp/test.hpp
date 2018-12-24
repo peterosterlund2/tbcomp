@@ -31,7 +31,9 @@ private:
     // ThreadPool
     void testThreadPool();
 
+    // Small utilities
     void testEntropy();
+    void testPermutator();
 };
 
 

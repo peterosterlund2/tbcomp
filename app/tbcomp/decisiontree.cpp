@@ -8,6 +8,7 @@
 #include "util/timeUtil.hpp"
 #include "threadpool.hpp"
 #include "tbutil.hpp"
+#include "permutator.hpp"
 #include <fstream>
 #include <cassert>
 #include <cfloat>
@@ -78,9 +79,15 @@ DecisionTree::updateStats(unsigned int chunkNo) {
     };
     Visitor visitor(pos, *ctx);
 
-    for (U64 idx = 0; idx < nPos; idx++) {
-        if ((hashU64(idx) & (nStatsChunks - 1)) != chunkNo)
-            continue;
+    Permutator perm(nPos);
+    const U64 maxIdx = perm.maxIdx();
+    const U64 s = maxIdx * chunkNo / nStatsChunks;
+    const U64 e = maxIdx * (chunkNo + 1) / nStatsChunks;
+
+    for (U64 i = s; i < e; i++) {
+        U64 idx = perm.permute(i);
+        if (i >= e)
+            break;
         if (!active.get(idx) || data.isHandled(idx))
             continue;
 
