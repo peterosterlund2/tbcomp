@@ -63,6 +63,7 @@ public:
 
     virtual bool isHandled(U64 idx) const = 0;
     virtual void setHandled(U64 idx, bool active) = 0;
+    virtual void prefetchIsHandled(U64 idx) const = 0;
 };
 
 class EvalContext {

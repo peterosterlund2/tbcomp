@@ -216,6 +216,7 @@ public:
 
     bool isHandled(U64 idx) const override { return data[idx].getHandled(); }
     void setHandled(U64 idx, bool handled) override { data[idx].setHandled(handled); }
+    void prefetchIsHandled(U64 idx) const override;
 
     int getCaptureWdl(U64 idx) const { return data[idx].getCaptureWdl(); }
     void setCaptureWdl(U64 idx, int wdl) { data[idx].setCaptureWdl(wdl); }
@@ -278,6 +279,13 @@ inline int
 CapturePredicate::eval(const Position& pos, DT::EvalContext& ctx) const {
     const WDLEvalContext& wdlCtx = static_cast<const WDLEvalContext&>(ctx);
     return wdlCtx.getCaptureWdl();
+}
+
+inline void
+WDLUncompressedData::prefetchIsHandled(U64 idx) const {
+#ifdef HAS_PREFETCH
+    __builtin_prefetch(&data[idx]);
+#endif
 }
 
 #endif /* WDLNODE_HPP_ */

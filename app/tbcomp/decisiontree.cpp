@@ -81,24 +81,51 @@ DecisionTree::updateStats(unsigned int chunkNo) {
 
     Permutator perm(nPos);
     const U64 maxIdx = perm.maxIdx();
-    const U64 s = maxIdx * chunkNo / nStatsChunks;
-    const U64 e = maxIdx * (chunkNo + 1) / nStatsChunks;
+    const U64 startIdx = maxIdx * chunkNo / nStatsChunks;
+    const U64 endIdx = maxIdx * (chunkNo + 1) / nStatsChunks;
 
-    for (U64 i = s; i < e; i++) {
-        U64 idx = perm.permute(i);
-        if (i >= e)
-            break;
-        if (!active.get(idx) || data.isHandled(idx))
-            continue;
+    const int partSize = 1024;
+    U64 nParts = (endIdx - startIdx + partSize - 1) / partSize;
 
-        bool valid = posIdx.index2Pos(idx, pos);
-        assert(valid);
-        ctx->init(pos, data, idx);
+    for (U64 p = 0; p < nParts; p++) {
+        U64 s = startIdx + p * partSize;
+        U64 e = std::min(s + partSize, endIdx);
 
-        visitor.value = data.getValue(idx);
-        root->accept(visitor);
-        if (!visitor.result)
-            data.setHandled(idx, true);
+        const int pOffs = 16; // Prefetch offset
+        std::array<U64, partSize> v1;
+        int v1Size = 0;
+        for (U64 i = s; i < e; i++) {
+            U64 idx = perm.permute(i);
+            if (i >= e)
+                break;
+            v1[v1Size++] = idx;
+        }
+
+        std::array<U64, partSize> v2;
+        int v2Size = 0;
+        for (int i = 0; i < v1Size; i++) {
+            if (i + pOffs < v1Size)
+                active.prefetch(v1[i + pOffs]);
+            if (active.get(v1[i]))
+                v2[v2Size++] = v1[i];
+        }
+
+        for (int i = 0; i < v2Size; i++) {
+            if (i + pOffs < v2Size)
+                data.prefetchIsHandled(v2[i + pOffs]);
+            U64 idx = v2[i];
+            if (data.isHandled(idx))
+                continue;
+
+            bool valid = posIdx.index2Pos(idx, pos);
+            assert(valid);
+            ctx->init(pos, data, idx);
+
+            visitor.value = data.getValue(idx);
+            root->accept(visitor);
+            if (!visitor.result)
+                data.setHandled(idx, true);
+        }
     }
 
     statsChunkAdded();

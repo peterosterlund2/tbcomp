@@ -12,6 +12,8 @@ public:
     bool get(U64 idx) const;
     void set(U64 idx, bool val);
 
+    void prefetch(U64 idx) const;
+
 private:
     std::vector<U64> vec;
 };
@@ -27,6 +29,13 @@ BitArray::BitArray(U64 size, bool initialVal) {
 inline bool
 BitArray::get(U64 idx) const {
     return vec[idx/64] & (1ULL << (idx%64));
+}
+
+inline void
+BitArray::prefetch(U64 idx) const {
+#ifdef HAS_PREFETCH
+    __builtin_prefetch(&vec[idx/64]);
+#endif
 }
 
 inline void
