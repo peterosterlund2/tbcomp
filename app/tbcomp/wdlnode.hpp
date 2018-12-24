@@ -134,7 +134,7 @@ public:
 
     std::unique_ptr<DT::Node> getBest(const DT::EvalContext& ctx) const override;
 
-    std::unique_ptr<DT::Node> getBestReplacement(const DT::EvalContext& ctx) const override;
+    std::unique_ptr<DT::Node> getBestReplacement(const DT::EvalContext& ctx, int level) const override;
 
 private:
     template <typename Func> void iterateMembers(Func func);

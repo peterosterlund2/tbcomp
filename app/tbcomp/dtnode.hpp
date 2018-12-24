@@ -139,7 +139,7 @@ public:
 
     /** Like getBest(), but only returns non-null if the probability to return
      *  a node that is substantially worse than optimal is small enough. */
-    virtual std::unique_ptr<Node> getBestReplacement(const DT::EvalContext& ctx) const = 0;
+    virtual std::unique_ptr<Node> getBestReplacement(const DT::EvalContext& ctx, int level) const = 0;
 
     /** Return the estimated cost of this node if it is not subdivided by a predicate. */
     double getPriorCost() const { return priorCost; }

@@ -317,7 +317,7 @@ WDLStatsCollectorNode::reScale(std::unique_ptr<DT::Node>& node) const {
 }
 
 std::unique_ptr<DT::Node>
-WDLStatsCollectorNode::getBestReplacement(const DT::EvalContext& ctx) const {
+WDLStatsCollectorNode::getBestReplacement(const DT::EvalContext& ctx, int level) const {
     std::unique_ptr<DT::Node> best, secondBest;
     double bestCost = DBL_MAX, secondBestCost = DBL_MAX;
     iterateMembers([&](const auto& collector) {
@@ -356,6 +356,22 @@ WDLStatsCollectorNode::getBestReplacement(const DT::EvalContext& ctx) const {
 
     if (secondBestCost - sumErr * 2.0 < bestCost - margin)
         return nullptr;
+
+    double origCost = bestCost;
+    {
+        auto b = dynamic_cast<const DT::PredicateNode*>(best.get());
+        if (b) {
+            std::unique_ptr<DT::StatsNode> s1 = b->left->getStats(ctx);
+            std::unique_ptr<DT::StatsNode> s2 = b->right->getStats(ctx);
+            s1->addStats(s2.get());
+            origCost = s1->cost(ctx);
+        }
+    }
+
+    double k = nChunks / (double)appliedChunks;
+    std::cout << "cost:" << origCost * k << " -> " << bestCost * k
+              << " diff:" << secondBestCost - bestCost << " d:" << level << " chunks:" << appliedChunks
+              << std::endl;
 
     reScale(best);
     return best;

@@ -129,7 +129,7 @@ DecisionTree::selectBestPreds(int maxDepth, int maxCollectorNodes, double& costT
         void visit(DT::StatsCollectorNode& node, std::unique_ptr<DT::Node>& owner, int level) {
             depth = std::max(depth, level + 1);
             {
-                std::unique_ptr<DT::Node> repl = node.getBestReplacement(ctx);
+                std::unique_ptr<DT::Node> repl = node.getBestReplacement(ctx, level);
                 if (!repl) {
                     double cost = node.getPriorCost();
                     if (cost >= 0 && cost < costThreshold)
