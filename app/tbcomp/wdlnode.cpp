@@ -20,6 +20,26 @@ WDLStats::better(const DT::Node* best, double& bestCost,
     return best == nullptr;
 }
 
+bool
+WDLStats::equals(const DT::Node* best,
+                 const WDLStats& statsFalse, const WDLStats& statsTrue) {
+    if (!best)
+        return false;
+    auto predNode = dynamic_cast<const DT::PredicateNode*>(best);
+    if (!predNode)
+        return false;
+
+    auto left = dynamic_cast<WDLStatsNode*>(predNode->left.get());
+    if (!left || !left->equals(statsFalse))
+        return false;
+
+    auto right = dynamic_cast<WDLStatsNode*>(predNode->right.get());
+    if (!right || !right->equals(statsTrue))
+        return false;
+
+    return true;
+}
+
 double
 WDLStats::cost(bool useGini) const {
     if (useGini) {

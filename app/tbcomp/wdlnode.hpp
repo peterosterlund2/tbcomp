@@ -22,6 +22,8 @@ public:
                        const WDLStats& statsFalse,
                        const WDLStats& statsTrue,
                        const DT::EvalContext& ctx);
+    static bool equals(const DT::Node* best,
+                       const WDLStats& statsFalse, const WDLStats& statsTrue);
 
     template <typename Pred>
     static std::unique_ptr<DT::Node> makeNode(const Pred& pred,
@@ -70,6 +72,10 @@ public:
                 count[i] = (U64)std::round((double)count[i] * nChunks / appliedChunks);
     }
 
+    bool operator==(const WDLStats& other) const {
+        return count == other.count;
+    }
+
 private:
     /** Cost adjusted to prefer an even split when the real cost is the same. */
     double adjustedCost(bool useGini) const;
@@ -96,6 +102,10 @@ public:
 
     void scaleStats(int nChunks, int appliedChunks) {
         stats.scaleCounts(nChunks, appliedChunks);
+    }
+
+    bool equals(const WDLStats& other) const {
+        return stats == other;
     }
 
 private:

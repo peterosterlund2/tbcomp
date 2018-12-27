@@ -222,7 +222,9 @@ public:
                      std::unique_ptr<DT::Node>& secondBest, double& secondBestCost,
                      const DT::EvalContext& ctx) const {
         double oldBestCost = bestCost;
-        if (Stats::better(best.get(), bestCost, stats[0], stats[1], ctx)) {
+        if (Stats::equals(best.get(), stats[0], stats[1])) {
+            // Ignore predicates having identical statistics
+        } else if (Stats::better(best.get(), bestCost, stats[0], stats[1], ctx)) {
             secondBest = std::move(best);
             secondBestCost = oldBestCost;
             best = Stats::makeNode(pred, stats[0], stats[1]);
@@ -388,7 +390,9 @@ public:
             statsFalse.subStats(stats[i]);
 
             double oldBestCost = bestCost;
-            if (Stats::better(best.get(), bestCost, statsFalse, statsTrue, ctx)) {
+            if (Stats::equals(best.get(), statsFalse, statsTrue)) {
+                // Ignore predicates having identical statistics
+            } else if (Stats::better(best.get(), bestCost, statsFalse, statsTrue, ctx)) {
                 secondBest = std::move(best);
                 secondBestCost = oldBestCost;
                 best = Stats::makeNode(MultiPredBound<MultiPred>(pred, minVal + i),
