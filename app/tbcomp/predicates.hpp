@@ -331,6 +331,32 @@ private:
     int p2;
 };
 
+class CenterPredicate : public MultiPredicate {
+public:
+    constexpr static int minVal = 0;
+    constexpr static int maxVal = 3;
+    explicit CenterPredicate(int pieceNo) : pieceNo(pieceNo) {}
+    int eval(const Position& pos, DT::EvalContext& ctx) const override {
+        int sq = ctx.getPieceSquare(pieceNo, pos);
+        static int c[64] = {
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 1, 1, 1, 1, 1, 1, 0,
+            0, 1, 2, 2, 2, 2, 1, 0,
+            0, 1, 2, 3, 3, 2, 1, 0,
+            0, 1, 2, 3, 3, 2, 1, 0,
+            0, 1, 2, 2, 2, 2, 1, 0,
+            0, 1, 1, 1, 1, 1, 1, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+        };
+        return c[sq];
+    }
+    std::string name() const override {
+        return "cent";
+    }
+private:
+    int pieceNo;
+};
+
 // ----------------------------------------------------------------------------
 
 template <typename MultiPred>

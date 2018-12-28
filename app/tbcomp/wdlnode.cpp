@@ -206,6 +206,8 @@ WDLStatsCollectorNode::WDLStatsCollectorNode(const DT::EvalContext& ctx, int nCh
         for (int p2 = 0; p2 < nPieces; p2++)
             if (p1 != p2)
                 attacks.emplace_back(p1, p2);
+    for (int i = 0; i < nPieces; i++)
+        cent.emplace_back(i);
 }
 
 template <typename Func>
@@ -244,6 +246,8 @@ WDLStatsCollectorNode::iterateMembers(Func func) {
     for (auto& p : forks)
         func(p);
     for (auto& p : attacks)
+        func(p);
+    for (auto& p : cent)
         func(p);
 }
 

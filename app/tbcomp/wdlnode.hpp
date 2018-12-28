@@ -154,6 +154,7 @@ private:
     std::vector<StatsCollector<SameDiagPredicate, WDLStats>> diag;
     std::vector<StatsCollector<AttackPredicate, WDLStats>> attacks;
     std::vector<StatsCollector<ForkPredicate, WDLStats>> forks;
+    std::vector<MultiPredStatsCollector<CenterPredicate, WDLStats>> cent;
 };
 
 class WDLEncoderNode : public DT::EncoderNode {
