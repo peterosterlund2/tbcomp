@@ -30,7 +30,7 @@ public:
 
 private:
     /** Update statistics for all MultiPredicate nodes. */
-    void updateStats(unsigned int chunkNo);
+    void updateStats(unsigned int chunkNo, int nThreads);
 
     /** For all StatsCollectorNodes report that one chunk has been processed. */
     void statsChunkAdded();

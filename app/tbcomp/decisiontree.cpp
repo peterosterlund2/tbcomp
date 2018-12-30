@@ -29,7 +29,7 @@ DecisionTree::computeTree(int maxDepth, int maxCollectorNodes, int nThreads) {
     double costThreshold = ctx->getMergeThreshold();
     int chunkNo = 0;
     for (int iter = 0; ; iter++) {
-        updateStats(chunkNo);
+        updateStats(chunkNo, nThreads);
         chunkNo = (chunkNo + 1) & (nStatsChunks - 1);
 
         std::cout << "iter:" << iter << " cost:" << root->cost(*ctx) << std::endl;
@@ -52,10 +52,8 @@ DecisionTree::computeTree(int maxDepth, int maxCollectorNodes, int nThreads) {
 }
 
 void
-DecisionTree::updateStats(unsigned int chunkNo) {
-    U64 nPos = posIdx.tbSize();
-    Position pos;
-    auto ctx = nodeFactory.makeEvalContext(posIdx);
+DecisionTree::updateStats(unsigned int chunkNo, int nThreads) {
+    const U64 nPos = posIdx.tbSize();
 
     struct Visitor {
         Visitor(const Position& pos, DT::EvalContext& ctx) : pos(pos), ctx(ctx) {}
@@ -76,23 +74,40 @@ DecisionTree::updateStats(unsigned int chunkNo) {
         int value = 0;
         bool result = false;
     };
-    Visitor visitor(pos, *ctx);
 
-    for (U64 idx = 0; idx < nPos; idx++) {
-        if ((hashU64(idx) & (nStatsChunks - 1)) != chunkNo)
-            continue;
-        if (!active.get(idx) || data.isHandled(idx))
-            continue;
+    nThreads = 4;
+    int maxJobs = nThreads * 4;
+    const U64 batchSize = std::max((U64)8*1024*1024, (nPos + maxJobs - 1) / maxJobs);
+    ThreadPool<int> pool(nThreads);
+    for (U64 b = 0; b < nPos; b += batchSize) {
+        auto task = [this,chunkNo,nPos,batchSize,b](int workerNo) {
+            Position pos;
+            auto ctx = nodeFactory.makeEvalContext(posIdx);
+            Visitor visitor(pos, *ctx);
 
-        bool valid = posIdx.index2Pos(idx, pos);
-        assert(valid);
-        ctx->init(pos, data, idx);
+            U64 end = std::min(b + batchSize, nPos);
+            for (U64 idx = b; idx < end; idx++) {
+                if ((hashU64(idx) & (nStatsChunks - 1)) != chunkNo)
+                    continue;
+                if (!active.get(idx) || data.isHandled(idx))
+                    continue;
 
-        visitor.value = data.getValue(idx);
-        root->accept(visitor);
-        if (!visitor.result)
-            data.setHandled(idx, true);
+                bool valid = posIdx.index2Pos(idx, pos);
+                assert(valid);
+                ctx->init(pos, data, idx);
+
+                visitor.value = data.getValue(idx);
+                root->accept(visitor);
+                if (!visitor.result)
+                    data.setHandled(idx, true);
+            }
+            return 0;
+        };
+        pool.addTask(task);
     }
+    int dummy;
+    while (pool.getResult(dummy))
+        ;
 
     statsChunkAdded();
 }
