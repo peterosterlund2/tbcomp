@@ -38,7 +38,8 @@ private:
     /** For each StatsCollectorNode, if it is accurate enough, replace it with
      *  a tree consisting of the best predicate and two new StatsCollectorNodes.
      *  @return True if there are still StatsCollectorNodes in the tree. */
-    bool selectBestPreds(int maxDepth, int maxCollectorNodes, double& costThreshold);
+    bool selectBestPreds(int maxDepth, int maxCollectorNodes, double& costThreshold,
+                         int nThreads);
 
     /** Merge nodes if they are equivalent or if the cost change is small enough. */
     void simplifyTree();

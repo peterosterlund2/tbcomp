@@ -168,6 +168,7 @@ WDLStatsNode::getEncoder(bool approximate) const {
 WDLStatsCollectorNode::WDLStatsCollectorNode(const DT::EvalContext& ctx, int nChunks,
                                              double priorCost)
     : StatsCollectorNode(nChunks, priorCost) {
+    mutex = make_unique<std::mutex>();
     int nPieces = ctx.numPieces();
     for (int i = 0; i < nPieces; i++)
         if (Piece::makeWhite(ctx.getPieceType(i)) == Piece::WPAWN)
@@ -258,11 +259,43 @@ WDLStatsCollectorNode::iterateMembers(Func func) const {
 bool
 WDLStatsCollectorNode::applyData(const Position& pos, int value, DT::EvalContext& ctx,
                                  int workerNo) {
-    std::lock_guard<std::mutex> L(mutex);
+    std::lock_guard<std::mutex> L(*mutex);
     iterateMembers([&pos,value,&ctx](auto& collector) {
         collector.applyData(pos, ctx, value);
     });
     return true;
+}
+
+void
+WDLStatsCollectorNode::mergeFrom(WDLStatsCollectorNode& other) {
+    auto func = [](auto& a, auto& b) {
+        a.mergeFrom(b);
+    };
+#define FOR_ALL(v) \
+    for (size_t i = 0; i < v.size(); i++) \
+        func(v[i], other.v[i])
+
+    func(wtm, other.wtm);
+    func(inCheck, other.inCheck);
+    func(bPairW, other.bPairW);
+    func(bPairB, other.bPairB);
+    func(sameB, other.sameB);
+    func(oppoB, other.oppoB);
+    FOR_ALL(kPawnSq);
+    func(pRace, other.pRace);
+    func(captWdl, other.captWdl);
+    FOR_ALL(darkSquare);
+    FOR_ALL(fileRankF);
+    FOR_ALL(fileRankR);
+    FOR_ALL(fileDelta);
+    FOR_ALL(rankDelta);
+    FOR_ALL(fileDist);
+    FOR_ALL(rankDist);
+    FOR_ALL(kingDist);
+    FOR_ALL(taxiDist);
+    FOR_ALL(diag);
+    FOR_ALL(forks);
+    FOR_ALL(attacks);
 }
 
 std::unique_ptr<DT::Node>
@@ -408,8 +441,16 @@ WDLEncoderNode::subSetOf(const WDLEncoderNode& other) const {
 
 std::unique_ptr<DT::StatsCollectorNode>
 WDLNodeFactory::makeStatsCollector(const DT::EvalContext& ctx, int nChunks,
-                                   double priorCost) {
-    return make_unique<WDLStatsCollectorNode>(ctx, nChunks, priorCost);
+                                   double priorCost, int nThreads) {
+    bool mt = true;
+    if (mt) {
+        auto ret = make_unique<DT::MTStatsCollectorNode<WDLStatsCollectorNode>>(nChunks, priorCost);
+        for (int i = 0; i < nThreads; i++)
+            ret->addCollector(ctx, nChunks, priorCost);
+        return ret;
+    } else {
+        return make_unique<WDLStatsCollectorNode>(ctx, nChunks, priorCost);
+    }
 };
 
 std::unique_ptr<DT::EvalContext>

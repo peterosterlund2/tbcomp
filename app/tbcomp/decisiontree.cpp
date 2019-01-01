@@ -23,7 +23,7 @@ DecisionTree::DecisionTree(DT::NodeFactory& nodeFactory, const PosIndex& posIdx,
 void
 DecisionTree::computeTree(int maxDepth, int maxCollectorNodes, int nThreads) {
     auto ctx = nodeFactory.makeEvalContext(posIdx);
-    root = nodeFactory.makeStatsCollector(*ctx, nStatsChunks, -1.0);
+    root = nodeFactory.makeStatsCollector(*ctx, nStatsChunks, -1.0, nThreads);
 
     S64 t0 = currentTimeMillis();
     double costThreshold = ctx->getMergeThreshold();
@@ -34,7 +34,7 @@ DecisionTree::computeTree(int maxDepth, int maxCollectorNodes, int nThreads) {
 
         std::cout << "iter:" << iter << " cost:" << root->cost(*ctx) << std::endl;
 
-        if (!selectBestPreds(maxDepth, maxCollectorNodes, costThreshold))
+        if (!selectBestPreds(maxDepth, maxCollectorNodes, costThreshold, nThreads))
             break;
     }
     S64 t1 = currentTimeMillis();
@@ -77,9 +77,8 @@ DecisionTree::updateStats(unsigned int chunkNo, int nThreads) {
         bool result = false;
     };
 
-    nThreads /= 2;
-    int maxJobs = nThreads * 4;
-    const U64 batchSize = std::max((U64)1024*1024, (nPos + maxJobs - 1) / maxJobs);
+    int maxJobs = 1024;
+    const U64 batchSize = std::max((U64)8*1024*1024, (nPos + maxJobs - 1) / maxJobs);
     ThreadPool<int> pool(nThreads);
     for (U64 b = 0; b < nPos; b += batchSize) {
         auto task = [this,chunkNo,nPos,batchSize,b](int workerNo) {
@@ -131,12 +130,13 @@ DecisionTree::statsChunkAdded() {
 }
 
 bool
-DecisionTree::selectBestPreds(int maxDepth, int maxCollectorNodes, double& costThreshold) {
+DecisionTree::selectBestPreds(int maxDepth, int maxCollectorNodes, double& costThreshold,
+                              int nThreads) {
     struct Visitor : public DT::Visitor {
         Visitor(DT::NodeFactory& nodeFactory, DT::EvalContext& ctx, int nStatsChunks,
-                int maxDepth, double costThreshold) :
+                int maxDepth, double costThreshold, int nThreads) :
             nodeFactory(nodeFactory), ctx(ctx), nStatsChunks(nStatsChunks),
-            maxDepth(maxDepth), costThreshold(costThreshold) {}
+            maxDepth(maxDepth), costThreshold(costThreshold), nThreads(nThreads) {}
         using DT::Visitor::visit;
         void visit(DT::PredicateNode& node, std::unique_ptr<DT::Node>& owner, int level) {
             depth = std::max(depth, level + 1);
@@ -164,13 +164,15 @@ DecisionTree::selectBestPreds(int maxDepth, int maxCollectorNodes, double& costT
                 if (predNode) {
                     double leftCost = predNode->left->cost(ctx);
                     if (leftCost > costThreshold) {
-                        predNode->left = nodeFactory.makeStatsCollector(ctx, nStatsChunks, leftCost);
+                        predNode->left = nodeFactory.makeStatsCollector(ctx, nStatsChunks,
+                                                                        leftCost, nThreads);
                         nStatsCollectors++;
                         minCost = std::min(minCost, leftCost);
                     }
                     double rightCost = predNode->right->cost(ctx);
                     if (rightCost > costThreshold) {
-                        predNode->right = nodeFactory.makeStatsCollector(ctx, nStatsChunks, rightCost);
+                        predNode->right = nodeFactory.makeStatsCollector(ctx, nStatsChunks,
+                                                                         rightCost, nThreads);
                         nStatsCollectors++;
                         minCost = std::min(minCost, rightCost);
                     }
@@ -182,6 +184,7 @@ DecisionTree::selectBestPreds(int maxDepth, int maxCollectorNodes, double& costT
         const int nStatsChunks;
         const int maxDepth;
         const double costThreshold;
+        const int nThreads;
         double minCost = DBL_MAX;
         bool treeModified = false;
         int nStatsCollectors = 0;
@@ -189,7 +192,7 @@ DecisionTree::selectBestPreds(int maxDepth, int maxCollectorNodes, double& costT
         int depth = 0;
     };
     auto ctx = nodeFactory.makeEvalContext(posIdx);
-    Visitor visitor(nodeFactory, *ctx, nStatsChunks, maxDepth, costThreshold);
+    Visitor visitor(nodeFactory, *ctx, nStatsChunks, maxDepth, costThreshold, nThreads);
     root->accept(visitor, root, 0);
 
     if (visitor.treeModified) {

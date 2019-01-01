@@ -48,6 +48,13 @@ public:
             count[i] -= other.count[i];
     }
 
+    void mergeFrom(WDLStats& other) {
+        for (int i = 0; i < nWdlVals; i++) {
+            count[i] += other.count[i];
+            other.count[i] = 0;
+        }
+    }
+
     bool isEmpty() const {
         for (U64 cnt : count)
             if (cnt != 0)
@@ -127,6 +134,8 @@ public:
 
     std::unique_ptr<DT::Node> getBestReplacement(const DT::EvalContext& ctx) const override;
 
+    void mergeFrom(WDLStatsCollectorNode& other);
+
 private:
     template <typename Func> void iterateMembers(Func func);
     template <typename Func> void iterateMembers(Func func) const;
@@ -134,7 +143,7 @@ private:
     /** Adjust counts based on fraction of positions sampled. */
     void reScale(std::unique_ptr<DT::Node>& node) const;
 
-    std::mutex mutex;
+    std::unique_ptr<std::mutex> mutex;
     StatsCollector<WTMPredicate, WDLStats> wtm;
     StatsCollector<InCheckPredicate, WDLStats> inCheck;
     StatsCollector<BishopPairPredicate<true>, WDLStats> bPairW;
@@ -232,7 +241,8 @@ public:
     : useGiniImpurity(gini), mergeThreshold(mergeThreshold) {}
 
     std::unique_ptr<DT::StatsCollectorNode> makeStatsCollector(const DT::EvalContext& ctx,
-                                                               int nChunks, double priorCost) override;
+                                                               int nChunks, double priorCost,
+                                                               int nThreads) override;
 
     std::unique_ptr<DT::EvalContext> makeEvalContext(const PosIndex& posIdx) override;
 

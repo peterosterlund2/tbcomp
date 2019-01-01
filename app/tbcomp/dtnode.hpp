@@ -128,7 +128,7 @@ public:
                            int workerNo) = 0;
 
     /** Called after applyData() has been called for all positions in a chunk. */
-    void chunkAdded();
+    virtual void chunkAdded();
 
     double cost(const DT::EvalContext& ctx) const override;
 
@@ -152,6 +152,48 @@ private:
     double priorCost;
 };
 
+/** Multi threaded version of StatsCollectorNode which keeps one StatsCollectorNode
+ *  object per thread. Note that only the applyData() method is thread safe.
+ *  "Impl" must be a concrete subclass of StatsCollectorNode. */
+template <typename Impl>
+class MTStatsCollectorNode : public StatsCollectorNode {
+public:
+    MTStatsCollectorNode(int nChunks, double priorCost) :
+        StatsCollectorNode(nChunks, priorCost) {}
+
+    template <typename... Args> void addCollector(Args&&... args) {
+        vec.emplace_back(std::forward<Args>(args)...);
+    }
+
+    bool applyData(const Position& pos, int value, EvalContext& ctx,
+                   int workerNo) override {
+        return vec[workerNo].applyData(pos, value, ctx, workerNo);
+    }
+
+    void chunkAdded() override {
+        StatsCollectorNode::chunkAdded();
+        for (auto& e : vec)
+            e.chunkAdded();
+        mergeData();
+    }
+
+    std::unique_ptr<Node> getBest(const DT::EvalContext& ctx) const override {
+        return vec[0].getBest(ctx);
+    }
+
+    std::unique_ptr<Node> getBestReplacement(const DT::EvalContext& ctx) const override {
+        return vec[0].getBestReplacement(ctx);
+    }
+
+private:
+    void mergeData() {
+        for (size_t i = 1; i < vec.size(); i++)
+            vec[0].mergeFrom(vec[i]);
+    }
+
+    std::vector<Impl> vec;
+};
+
 class EncoderNode : public Node {
 public:
     EncoderNode() : Node(NodeType::ENCODER) {}
@@ -166,7 +208,8 @@ public:
 class NodeFactory {
 public:
     virtual std::unique_ptr<StatsCollectorNode> makeStatsCollector(const EvalContext& ctx,
-                                                                   int nChunks, double priorCost) = 0;
+                                                                   int nChunks, double priorCost,
+                                                                   int nThreads) = 0;
 
     virtual std::unique_ptr<EvalContext> makeEvalContext(const PosIndex& posIdx) = 0;
 };

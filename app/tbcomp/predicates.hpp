@@ -231,6 +231,11 @@ public:
         }
     }
 
+    void mergeFrom(StatsCollector& other) {
+        for (int i = 0; i < (int)COUNT_OF(stats); i++)
+            stats[i].mergeFrom(other.stats[i]);
+    }
+
 private:
     Pred pred;
     Stats stats[2];
@@ -398,6 +403,11 @@ public:
                                              statsFalse, statsTrue);
             }
         }
+    }
+
+    void mergeFrom(MultiPredStatsCollector& other) {
+        for (int i = 0; i < (int)COUNT_OF(stats); i++)
+            stats[i].mergeFrom(other.stats[i]);
     }
 
 private:
