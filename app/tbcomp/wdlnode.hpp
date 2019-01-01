@@ -121,7 +121,7 @@ class WDLStatsCollectorNode : public DT::StatsCollectorNode {
 public:
     WDLStatsCollectorNode(const DT::EvalContext& ctx, int nChunks, double priorCost);
 
-    bool applyData(const Position& pos, int value, DT::EvalContext& ctx) override;
+    bool applyData(const Position& pos, int value, DT::EvalContext& ctx, int workerNo) override;
 
     std::unique_ptr<DT::Node> getBest(const DT::EvalContext& ctx) const override;
 

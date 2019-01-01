@@ -56,7 +56,8 @@ DecisionTree::updateStats(unsigned int chunkNo, int nThreads) {
     const U64 nPos = posIdx.tbSize();
 
     struct Visitor {
-        Visitor(const Position& pos, DT::EvalContext& ctx) : pos(pos), ctx(ctx) {}
+        Visitor(const Position& pos, DT::EvalContext& ctx, int workerNo) :
+            pos(pos), ctx(ctx), workerNo(workerNo) {}
         void visit(DT::PredicateNode& node) {
             return node.getChild(pos, ctx).accept(*this);
         }
@@ -64,26 +65,27 @@ DecisionTree::updateStats(unsigned int chunkNo, int nThreads) {
             result = false;
         }
         void visit(DT::StatsCollectorNode& node) {
-            result = node.applyData(pos, value, ctx);
+            result = node.applyData(pos, value, ctx, workerNo);
         }
         void visit(DT::EncoderNode& node) {
             assert(false);
         }
         const Position& pos;
         DT::EvalContext& ctx;
+        const int workerNo;
         int value = 0;
         bool result = false;
     };
 
-    nThreads = 4;
+    nThreads /= 2;
     int maxJobs = nThreads * 4;
-    const U64 batchSize = std::max((U64)8*1024*1024, (nPos + maxJobs - 1) / maxJobs);
+    const U64 batchSize = std::max((U64)1024*1024, (nPos + maxJobs - 1) / maxJobs);
     ThreadPool<int> pool(nThreads);
     for (U64 b = 0; b < nPos; b += batchSize) {
         auto task = [this,chunkNo,nPos,batchSize,b](int workerNo) {
             Position pos;
             auto ctx = nodeFactory.makeEvalContext(posIdx);
-            Visitor visitor(pos, *ctx);
+            Visitor visitor(pos, *ctx, workerNo);
 
             U64 end = std::min(b + batchSize, nPos);
             for (U64 idx = b; idx < end; idx++) {

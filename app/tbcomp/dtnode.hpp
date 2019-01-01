@@ -124,7 +124,8 @@ public:
 
     /** Apply position value to tree, possibly by delegating to a child node.
      *  @return True if application was successful, false otherwise. */
-    virtual bool applyData(const Position& pos, int value, EvalContext& ctx) = 0;
+    virtual bool applyData(const Position& pos, int value, EvalContext& ctx,
+                           int workerNo) = 0;
 
     /** Called after applyData() has been called for all positions in a chunk. */
     void chunkAdded();
