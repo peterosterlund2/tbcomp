@@ -115,6 +115,7 @@ DecisionTree::statsChunkAdded() {
 
 bool
 DecisionTree::selectBestPreds(int maxDepth, int maxCollectorNodes, double& costThreshold) {
+    static int generation = 0;
     struct Visitor : public DT::Visitor {
         Visitor(DT::NodeFactory& nodeFactory, DT::EvalContext& ctx, int nStatsChunks,
                 int maxDepth, double costThreshold) :
@@ -134,10 +135,13 @@ DecisionTree::selectBestPreds(int maxDepth, int maxCollectorNodes, double& costT
                     double cost = node.getPriorCost();
                     if (cost >= 0 && cost < costThreshold)
                         nOldStatsCollectors++;
-                    else
+                    else {
                         nStatsCollectors++;
+                        std::cout << " gen:" << generation << " nPos:" << node.getSize() << std::endl;
+                    }
                     return;
                 }
+                std::cout << " gen:" << generation << " nPos:" << node.getSize() << std::endl;
                 owner = std::move(repl);
                 treeModified = true;
             }
@@ -187,6 +191,8 @@ DecisionTree::selectBestPreds(int maxDepth, int maxCollectorNodes, double& costT
         costThreshold *= 2;
         std::cout << "  costThreshold:" << costThreshold << std::endl;
     }
+
+    generation++;
 
     return visitor.nStatsCollectors + visitor.nOldStatsCollectors > 0;
 }

@@ -231,6 +231,8 @@ public:
         }
     }
 
+    U64 getSize() const { return stats[0].getSize() + stats[1].getSize(); }
+
 private:
     Pred pred;
     Stats stats[2];

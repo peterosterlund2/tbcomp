@@ -70,6 +70,13 @@ public:
                 count[i] = (U64)std::round((double)count[i] * nChunks / appliedChunks);
     }
 
+    U64 getSize() const {
+        U64 sum = 0;
+        for (U64 cnt : count)
+            sum += cnt;
+        return sum;
+    }
+
 private:
     /** Cost adjusted to prefer an even split when the real cost is the same. */
     double adjustedCost(bool useGini) const;
@@ -125,6 +132,8 @@ public:
     std::unique_ptr<DT::Node> getBest(const DT::EvalContext& ctx) const override;
 
     std::unique_ptr<DT::Node> getBestReplacement(const DT::EvalContext& ctx) const override;
+
+    U64 getSize() const override;
 
 private:
     template <typename Func> void iterateMembers(Func func);

@@ -131,6 +131,8 @@ public:
 
     double cost(const DT::EvalContext& ctx) const override;
 
+    virtual U64 getSize() const = 0;
+
     std::unique_ptr<StatsNode> getStats(const DT::EvalContext& ctx) const override;
     std::string describe(int indentLevel, const DT::EvalContext& ctx) const override;
 

@@ -275,6 +275,12 @@ WDLStatsCollectorNode::getBest(const DT::EvalContext& ctx) const {
     return best;
 }
 
+U64
+WDLStatsCollectorNode::getSize() const {
+    U64 s = wtm.getSize();
+    return appliedChunks > 0 ? s * nChunks / appliedChunks : 0;
+}
+
 void
 WDLStatsCollectorNode::reScale(std::unique_ptr<DT::Node>& node) const {
     struct Visitor : public DT::Visitor {
