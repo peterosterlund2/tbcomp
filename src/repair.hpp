@@ -4,6 +4,7 @@
 #include "bitbuffer.hpp"
 #include "symbolarray.hpp"
 #include <unordered_map>
+#include <functional>
 
 namespace RePairImpl {
     struct CompressData;
