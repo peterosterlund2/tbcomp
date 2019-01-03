@@ -26,19 +26,7 @@ public:
     template <typename Pred>
     static std::unique_ptr<DT::Node> makeNode(const Pred& pred,
                                               const WDLStats& statsFalse,
-                                              const WDLStats& statsTrue) {
-        if (statsFalse.isEmpty()) {
-            return make_unique<WDLStatsNode>(statsTrue);
-        } else if (statsTrue.isEmpty()) {
-            return make_unique<WDLStatsNode>(statsFalse);
-        } else {
-            auto ret = make_unique<DT::PredicateNode>();
-            ret->pred = make_unique<Pred>(pred);
-            ret->left = make_unique<WDLStatsNode>(statsFalse);
-            ret->right = make_unique<WDLStatsNode>(statsTrue);
-            return std::move(ret);
-        }
-    }
+                                              const WDLStats& statsTrue);
 
     /** Increment counter corresponding to wdlScore. */
     void incCount(int wdlScore) {
@@ -269,6 +257,22 @@ private:
     const double mergeThreshold;
 };
 
+template <typename Pred>
+std::unique_ptr<DT::Node> WDLStats::makeNode(const Pred& pred,
+                                             const WDLStats& statsFalse,
+                                             const WDLStats& statsTrue) {
+    if (statsFalse.isEmpty()) {
+        return make_unique<WDLStatsNode>(statsTrue);
+    } else if (statsTrue.isEmpty()) {
+        return make_unique<WDLStatsNode>(statsFalse);
+    } else {
+        auto ret = make_unique<DT::PredicateNode>();
+        ret->pred = make_unique<Pred>(pred);
+        ret->left = make_unique<WDLStatsNode>(statsFalse);
+        ret->right = make_unique<WDLStatsNode>(statsTrue);
+        return std::move(ret);
+    }
+}
 
 inline int
 CapturePredicate::eval(const Position& pos, DT::EvalContext& ctx) const {
