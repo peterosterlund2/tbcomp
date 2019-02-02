@@ -3,8 +3,7 @@
 	<name>tbcomp</name>
 	<comment></comment>
 	<projects>
-		<project>texellib</project>
-		<project>texelutillib</project>
+		<project>texel</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
