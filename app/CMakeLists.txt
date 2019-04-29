@@ -1,0 +1,5 @@
+add_subdirectory(texel)
+add_subdirectory(texelutil)
+add_subdirectory(uciadapter)
+add_subdirectory(bookgui)
+add_subdirectory(runcmd)
