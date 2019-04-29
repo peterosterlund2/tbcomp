@@ -18,7 +18,11 @@ set(src_tbcomp
   wdlnode.cpp       wdlnode.hpp
   )
 
-add_executable(tbcomp ${src_tbcomp})
-target_link_libraries(tbcomp
-  PUBLIC texelutillib
-  )
+if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
+  if(NOT ANDROID)
+    add_executable(tbcomp ${src_tbcomp})
+    target_link_libraries(tbcomp
+      PUBLIC texelutillib
+      )
+  endif()
+endif()  
