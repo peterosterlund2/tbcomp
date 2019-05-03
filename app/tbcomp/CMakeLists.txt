@@ -20,9 +20,11 @@ set(src_tbcomp
 
 if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
   if(NOT ANDROID)
+    find_package(Boost 1.66 REQUIRED)
     add_executable(tbcomp ${src_tbcomp})
     target_link_libraries(tbcomp
       PUBLIC texelutillib
+      PRIVATE Boost::boost
       )
   endif()
 endif()  
