@@ -7,21 +7,10 @@
 #include "moveGen.hpp"
 #include "textio.hpp"
 #include "threadpool.hpp"
+#include "tbpath.hpp"
 
 #include <fstream>
 
-
-static void
-setupTB() {
-    UciParams::gtbPath->set("/home/petero/chess/gtb");
-    UciParams::gtbCache->set("2047");
-    UciParams::rtbPath->set("/home/petero/chess/rtb/wdl:"
-                            "/home/petero/chess/rtb/dtz:"
-                            "/home/petero/chess/rtb/6wdl:"
-                            "/home/petero/chess/rtb/6dtz:"
-                            "/home/petero/chess/rtb/7wdl:"
-                            "/home/petero/chess/rtb/7dtz");
-}
 
 static void
 getPieces(const std::string& tbType, std::vector<int>& pieces) {
@@ -64,7 +53,7 @@ WdlCompress::WdlCompress(const std::string& tbType, bool useGini,
       samplingLogFactor(samplingLogFactor) {
     nThreads = std::thread::hardware_concurrency();
     ComputerPlayer::initEngine();
-    setupTB();
+    TBPath::setDefaultTBPaths();
 
     Position pos;
     pos.setPiece(H6, Piece::WKING);
